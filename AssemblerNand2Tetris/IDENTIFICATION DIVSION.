@@ -1,0 +1,32 @@
+IDENTIFICATION DIVSION.
+PROGRAM-ID.  AssemblerNand2Tetris 
+AUTHOR.  David G. Smith
+DATA DIVISION.
+WORKING-STORAGE SECTION.
+01  ROMAddress PIC VALUE ZEROS.
+02  RAMAddress PIC VALUE 16.
+03  CompTable  PIC - hash table of strings and values
+04  DestTable  PIC - hash table of strings and values
+05  JumpTable  PIC - hash table of strings and values
+06  PreDefTable PIC - hash table of strings and value and values
+08  DataFIle PIC - array of Strings
+PROCEDURE DIVISION.
+*>  Build compDestJumpPredef tables
+*>  first pass - if array has more lines advance
+*>    ignore comments and white toclassify
+*>    A or C - romAddress++
+*>    L - put in userdef table with romAddress binary
+*>  reset to front of array
+*>  second pass- if array has more lines advance
+*>    ignore cooments and white space to classify
+*>      A Cmd - remove @
+*>        If numeric convert to binary and write to file
+*>        else if predef lookup binary and write to file
+*>        else if userdef lookup binary and write to file
+*>        else if new, add to userdef with ramAddress then ramAddress++
+*>      C Cmd
+*>        if contains "=" lookup comp and concat with lookup dest
+*>        else if xontains ";" lookup comp and concat with lookup jump
+*>        concat 111 to front of string
+*>        write to file
+*>    close file
