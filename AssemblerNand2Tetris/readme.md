@@ -1,1 +1,1 @@
-This repo contains programs I have written from Nand2Tetris that I am using as lessons to teach myself COBOL.
+This folder contains programs I have written from Nand2Tetris that I am using as lessons to teach myself COBOL.
