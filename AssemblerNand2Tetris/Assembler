@@ -3,13 +3,22 @@ PROGRAM-ID.  AssemblerNand2Tetris
 AUTHOR.  David G. Smith
 DATA DIVISION.
 WORKING-STORAGE SECTION.
-01  ROMAddress PIC VALUE ZEROS.
-02  RAMAddress PIC VALUE 16.
-03  CompTable  PIC - hash table of strings and values
-04  DestTable  PIC - hash table of strings and values
-05  JumpTable  PIC - hash table of strings and values
-06  PreDefTable PIC - hash table of strings and value and values
-08  DataFIle PIC - array of Strings
+01  ROMAddress PIC 9(5) VALUE ZEROS.
+01  RAMAddress PIC 9(5) VALUE 16.
+01  CompTable.
+	02 CompBin OCCURS 28 TIME X(7).
+	02 CompAsm OCCURS 28 TIMES XXX.
+01  DestTable.
+    02 DestBin OCCURS 8 TIMES X(6).
+    02 DestAsm OCCURS 4 TIMES X(4).
+01  JumpTable.
+    02 JumpBin OCCURS 8 TIMES X(3).
+    02 JumpAsm OCCURS 8 TIMES X(4).
+01  PreDefTable.
+    02 PreDefInt OCCURS 23 TIMES X(16).
+    02 PreDefAsm OCCURS 23 TIMES X(5).
+01  DataFIle.
+    02 Lines OCCURS 1000 TIME X(80).
 PROCEDURE DIVISION.
 *>  Build compDestJumpPredef tables
 *>  first pass - if array has more lines advance
