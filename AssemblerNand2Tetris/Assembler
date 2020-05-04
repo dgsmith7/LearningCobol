@@ -17,8 +17,16 @@ WORKING-STORAGE SECTION.
 01  PreDefTable.
     02 PreDefInt OCCURS 23 TIMES X(16).
     02 PreDefAsm OCCURS 23 TIMES X(5).
-01  DataFIle.
+01  UserDefTable.
+    02 UserDefSym OCCURS 500 TIMES X(80).
+    02 UserDefBin OCCURS 500 TIMES X(16).
+01  InputData.
     02 Lines OCCURS 1000 TIME X(80).
+01  CurrentLine PIC X(80).
+01  LineIndex PIC 9(4).
+01  FileNameTables PIC X(64).
+01  FileNameData PIC X(64).
+01  FileNameOutput PIC X(64).
 PROCEDURE DIVISION.
 *>  Build compDestJumpPredef tables
 *>  first pass - if array has more lines advance
