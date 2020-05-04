@@ -5,18 +5,22 @@ DATA DIVISION.
 WORKING-STORAGE SECTION.
 01  ROMAddress PIC 9(5) VALUE ZEROS.
 01  RAMAddress PIC 9(5) VALUE 16.
+01  CompTableFileName PIC X(13) VALUE "CompTable.txt"
 01  CompTable.
 	02 CompBin OCCURS 28 TIME X(7).
 	02 CompAsm OCCURS 28 TIMES XXX.
+01  DestTableFileName PIC X(13) VALUE "DestTable.txt"
 01  DestTable.
     02 DestBin OCCURS 8 TIMES X(6).
     02 DestAsm OCCURS 4 TIMES X(4).
+01  JumpTableFileName PIC X(13) VALUE "JumpTable.txt"
 01  JumpTable.
     02 JumpBin OCCURS 8 TIMES X(3).
     02 JumpAsm OCCURS 8 TIMES X(4).
+01  PreDefTableFileName PIC X(13) VALUE "PreDefTable.txt"
 01  PreDefTable.
     02 PreDefInt OCCURS 23 TIMES X(16).
-    02 PreDefAsm OCCURS 23 TIMES X(5).
+    02 PreDefAsm OCCURS 23 TIMES X(6).
 01  UserDefTable.
     02 UserDefSym OCCURS 500 TIMES X(80).
     02 UserDefBin OCCURS 500 TIMES X(16).
