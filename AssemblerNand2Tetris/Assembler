@@ -13,11 +13,11 @@ WORKING-STORAGE SECTION.
 01  DestTable.
     02 DestBin OCCURS 8 TIMES X(6).
     02 DestAsm OCCURS 4 TIMES X(4).
-01  JumpTableFileName PIC X(13) VALUE "JumpTable.txt"
+01  JumpTableFileName PIC X(13) VALUE "JumpTable.txt".
 01  JumpTable.
     02 JumpBin OCCURS 8 TIMES X(3).
     02 JumpAsm OCCURS 8 TIMES X(4).
-01  PreDefTableFileName PIC X(13) VALUE "PreDefTable.txt"
+01  PreDefTableFileName PIC X(13) VALUE "PreDefTable.txt".
 01  PreDefTable.
     02 PreDefInt OCCURS 23 TIMES X(16).
     02 PreDefAsm OCCURS 23 TIMES X(6).
