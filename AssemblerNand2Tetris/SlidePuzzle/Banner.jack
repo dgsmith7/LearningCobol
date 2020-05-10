@@ -1,0 +1,25 @@
+class Banner {
+
+field String message;
+field int x;
+field int y;
+
+	constructor Banner new(int Ax, int Ay, String Amessage) {
+	  let message = Amessage;
+	  let x = Ax;
+	  let y = Ay;
+	  return this;
+	}
+
+	method void dispose () {
+	  do Memory.deAlloc(this);
+	  return;
+	}
+
+    method void display() {
+        do Output.moveCursor(x, y);
+		do Output.printString(message);
+		return;
+	}
+
+}

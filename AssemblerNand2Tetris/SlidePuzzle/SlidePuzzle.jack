@@ -1,0 +1,375 @@
+class SlidePuzzle {
+
+	field Banner title_banner;
+	field Banner new_banner;
+	field Banner about_banner_0;
+	field Banner about_banner_1;
+	field Banner about_banner_2;
+	field Banner about_banner_3;
+	field Banner about_banner_4;
+	field Banner about_banner_5;
+	field Banner about_banner_6;
+	field Banner about_banner_7;
+	field Banner exit_banner;	
+	field Banner message_banner_1; 
+	field Banner message_banner_2; 
+	field Banner start_banner;
+	field Array solution_board;
+	field Array current_board;
+	field Array holder_board;
+	field Array valid_input_ref;
+	field int blank_tile_index; 
+	field int input_made;
+	field int best_score;
+	field int move_counter;
+	field int input_key;
+	field boolean valid_input_made;
+	field boolean gameplay_in_progress;
+	field boolean user_wants_new_game;
+	field boolean user_wants_about;
+	field boolean user_wants_to_exit;
+	field boolean board_is_solved;
+	field boolean match;
+
+	constructor SlidePuzzle new() {
+	  let title_banner = Banner.new (1, 20, "Sliding Tile Puzzle");
+	  let new_banner = Banner.new (17, 4, "N-new");
+	  let about_banner_0 = Banner.new (17, 11, "A-about");
+	  let about_banner_1 = Banner.new (8, 26, "Put the tiles in numerical order with");
+	  let about_banner_2 = Banner.new (9, 27, "the blank in the lower right corner.");
+	  let about_banner_3 = Banner.new (11, 32, "Use the arrow keys to move an");
+	  let about_banner_4 = Banner.new (12, 29, "adjacent tile into the empty space");
+	  let about_banner_5 = Banner.new (13, 34, "or key in an option below");
+	  let about_banner_6 = Banner.new (14, 42, "the puzzle.");
+	  let about_banner_7 = Banner.new (16, 29, "(C) By David G. Smith - Nov 2015");
+	  let exit_banner = Banner.new (17, 20, "E-exit");
+	  let message_banner_1 = Banner.new (4, 34, "You solved it! Great job!");
+      let message_banner_2 = Banner.new (6, 32, "You beat the best score too!");	let start_banner = Banner.new (7, 20, "Press any key to start.");
+	  let solution_board = Array.new(16);
+	  let current_board = Array.new(16);
+	  let holder_board = Array.new(16);
+	  let valid_input_ref = Array.new(7);
+	  let blank_tile_index = 15;
+	  let input_key = 0;
+	  let best_score = 9999;
+	  let move_counter = 0;
+	  let valid_input_made = false;
+	  let gameplay_in_progress = false;
+	  let user_wants_new_game = true;
+	  let user_wants_about = false;
+	  let user_wants_to_exit = false;
+	  let board_is_solved = false;
+	  let match = true;
+	  return this;
+	}
+
+	method void dispose () {
+	  do Memory.deAlloc(this);
+	  return;
+	}
+
+	method void run () {
+      var int i;
+      do Screen.clearScreen ();
+	  do start_banner.display ();
+	    let input_key = 0;
+	    let i = 0;
+		while (input_key = 0) {   // wait for a new key to be pressed
+	      let input_key = Keyboard.keyPressed ();
+          let i = i + 1;
+          if (i = 10) {let i = 0;}
+	    }
+      do Memory.poke (24576, 0);
+ 	  do LCGRandom.setSeed (i);
+      do build_valid_input_ref ();
+      do build_solution_board ();
+	  do mix_puzzle ();
+	  let move_counter = 0;
+	  let user_wants_new_game = false;
+      let gameplay_in_progress = true;
+	  while (~(user_wants_to_exit)) { 
+	    if (user_wants_new_game) {
+	      do mix_puzzle ();
+	      let move_counter = 0;
+	      let user_wants_new_game = false;
+          let gameplay_in_progress = true;
+	    }
+	    if (gameplay_in_progress)	{
+	      do Screen.clearScreen ();
+	    }
+	    if (user_wants_about) {  //  display the about message 
+	      do about_banner_1.display ();
+	      do about_banner_2.display ();
+	      do about_banner_3.display ();
+	      do about_banner_4.display ();
+	      do about_banner_5.display ();
+	      do about_banner_6.display ();
+	      do about_banner_7.display ();
+	    } 
+	    do draw_board ();
+	    do wait_for_valid_input ();
+	    if (input_key = 78)  {  // trips flag for a new game
+	      let user_wants_new_game = true; 
+	    }
+	    if (input_key = 65)  {  //  toggles flag to display about info
+  	      let user_wants_about = (~user_wants_about);
+	    }
+	    if (input_key = 69) {  // trips flag to exit the program
+	      let user_wants_to_exit = true;
+	    }	   
+	    if (((input_key > 129) & (input_key < 135)) & (gameplay_in_progress)) {
+	      do update_board ();
+	      let move_counter = move_counter + 1;
+		  let valid_input_made = false;
+	    } 
+   	    let input_key = 0;
+	    do Screen.clearScreen ();
+	    do board_solved();
+	    if (board_is_solved) {
+	      do draw_board ();
+	      let gameplay_in_progress = false;
+	      do update_high_score ();
+	      do message_banner_1.display ();
+	    }	 
+      }
+	  let gameplay_in_progress = true;
+		do title_banner.dispose ();
+		do new_banner.dispose ();
+		do about_banner_0.dispose ();
+		do about_banner_1.dispose ();
+		do about_banner_2.dispose ();
+		do about_banner_3.dispose ();
+		do about_banner_4.dispose ();
+		do about_banner_5.dispose ();
+		do about_banner_6.dispose ();
+		do about_banner_7.dispose ();
+		do exit_banner.dispose ();
+		do message_banner_1.dispose (); 
+		do message_banner_2.dispose (); 
+      return;
+    }
+
+	method void mix_puzzle () {  
+ 	  var int i;
+ 	  var int j;
+ 	  var int rand;
+ 	  let i = 0;
+ 	  let j = 0;
+ 	  let rand = 0; 
+      while (i < 16) {
+        let holder_board[i] = 0;
+        let i = i + 1;
+      }
+      let rand = LCGRandom.randRange(1,16);
+      let i = 0;
+      let match = true;
+      while (i < 16) {
+        let rand = LCGRandom.randRange(1,16);
+        let match = true;
+        while (match) {
+          let match = false;
+          let j = 0;
+          while (j<i) {
+            if (holder_board[j] = rand) {
+              let match = true;
+                }
+              let j = j +1;
+            }
+            if (match) {
+		      let rand = LCGRandom.randRange(1,16);
+		    }
+          }
+          let holder_board[i] = rand;
+          let i = i + 1;
+        }
+      let i = 0;
+      while (i < 16) {
+        let current_board[i] = holder_board[i];
+        if (current_board[i] = 16) {      
+          let blank_tile_index = i;
+        }
+        let i = i + 1;
+      }
+      return;
+	}
+
+	method void draw_board () {  //  updates play board and messages
+	  var int i;
+	  var int j;
+	  var int x;
+	  var int y;
+	  var int count;
+	  let count = 0;
+	  let i = 1;
+	  while (i < 5) {	  
+        let j = 1;
+        do Screen.setColor(true);
+        while (j < 5) { 
+          let x = (j*32+23);
+          let y = (i*32+3);
+          do Screen.drawLine(x, y, x, y+29);
+          do Screen.drawLine(x, y+29, x+29, y+29);
+          do Screen.drawLine(x+29, y+29, x+29, y);
+          do Screen.drawLine(x+29, y, x, y);
+  		  do Output.moveCursor(((i*3)+1), ((j*4)+4));
+		  if (current_board[count] = 16) {
+		    do Output.printString("  ");
+		  }
+		  if (~(current_board[count] = 16)) {
+		    do Output.printInt(current_board[count]);
+		  }
+          if (blank_tile_index = count) {
+            do Screen.drawRectangle(x,y,x+29, y+29); 
+          }
+		  let count = count + 1;
+		  let j = j + 1;
+	    }
+	    let i = i + 1;
+      }
+      do title_banner.display ();
+      do new_banner.display ();
+      do about_banner_0.display ();
+      do exit_banner.display ();
+      do Output.moveCursor(20, 3);
+	  do Output.printString("Moves: ");
+      do Output.printInt(move_counter);
+      do Output.moveCursor(20, 17);
+	  do Output.printString("Best: ");
+      do Output.printInt(best_score);
+	  return;
+	}
+
+	method void update_high_score () {  // updates the high score if needed
+	  if (move_counter < best_score) {
+  	    do message_banner_2.display ();
+        let best_score = move_counter;
+        do Output.moveCursor(20, 18);
+	    do Output.printString("Best:      ");
+        do Output.moveCursor(20, 18);
+	    do Output.printString("Best: ");
+        do Output.printInt(best_score);
+      }
+	  return;
+	}
+
+	method void wait_for_valid_input () {  //  gets input and checks for validity
+	  var int i;
+      let valid_input_made = false;
+	  while (~(valid_input_made)) {  // keep checkng if the input isn't valid
+	    let input_key = 0;
+		while (input_key = 0) {   // wait for a new key to be pressed
+	      let input_key = Keyboard.keyPressed ();
+	    }
+        do Memory.poke (24576, 0);
+ 	    let i = 0;
+	    let valid_input_made = false;
+	    while (i < 7)  {  // check if the key is an arrow, n, a, or e
+	      if (valid_input_ref[i] = input_key) {
+	        let valid_input_made = true;
+	      }
+	      let i = i + 1;
+	    }
+	    if (valid_input_made) {  //  if its an arrow - check validity againt position of blank tile 
+	    if ((blank_tile_index = 0) & ((input_key = 132) | (input_key = 133))) {
+	      let valid_input_made = false; 
+		}
+		else {
+		  if (((blank_tile_index = 1) | (blank_tile_index = 2)) & (input_key = 133))  {
+		    let valid_input_made = false; 
+		  }
+		  else {
+		    if ((blank_tile_index = 3) & ((input_key = 130) | (input_key = 133))) {
+		      let valid_input_made = false; 
+		    }
+		    else {
+		      if (((blank_tile_index = 4) | (blank_tile_index = 8)) & (input_key = 132)) {
+		        let valid_input_made = false; 
+		      }	     
+		      else {
+		        if (((blank_tile_index = 7) | (blank_tile_index = 11)) & (input_key = 130)) {
+		          let valid_input_made = false; 
+		        }	     
+		        else {
+		          if ((blank_tile_index = 12) & ((input_key = 131) | (input_key = 132))) {
+		            let valid_input_made = false; 
+		          }	     
+		          else {
+		            if (((blank_tile_index = 13) | (blank_tile_index = 14)) & (input_key = 131)) {
+		              let valid_input_made = false; 
+		            }	     
+		            else {
+		              if ((blank_tile_index = 15) & ((input_key = 130) | (input_key = 131))) {
+		                let valid_input_made = false; 
+		              }	     
+					}
+				  }
+				}
+			  }
+			}
+		  }
+		}
+      }
+      }
+      return;
+	}	
+
+	method void update_board () {  // updates the board with the current valid move
+	  if (input_key = 130) { // left arrow
+		let current_board[blank_tile_index] = current_board[(blank_tile_index + 1)];
+		let current_board[(blank_tile_index + 1)] = 16; 
+		let blank_tile_index = blank_tile_index + 1;
+	  }
+	  if (input_key = 131) { // up arrow
+		let current_board[blank_tile_index] = current_board[(blank_tile_index + 4)];
+		let current_board[(blank_tile_index + 4)] = 16; 
+		let blank_tile_index = blank_tile_index + 4;
+	  }
+	  if (input_key = 132) { // right arrow
+		let current_board[blank_tile_index] = current_board[(blank_tile_index - 1)];
+		let current_board[(blank_tile_index - 1)] = 16; 
+		let blank_tile_index = blank_tile_index - 1;
+	  }
+	  if (input_key = 133) { // down arrow
+		let current_board[blank_tile_index] = current_board[(blank_tile_index - 4)];
+		let current_board[(blank_tile_index - 4)] = 16; 
+		let blank_tile_index = blank_tile_index - 4;
+	  }
+		let input_key = 0;
+	    return;
+	}
+
+	method void board_solved () {  // compares current board to solution and trips flag
+      var int i;
+      let board_is_solved = true;
+      let i = 0;
+      while (i < 16) {
+        if (~(current_board [i] = solution_board [i]) & (board_is_solved)) {
+	      let board_is_solved = false;
+	    }
+	    let i = i + 1;
+	  }
+	  return;
+	}
+
+	method void build_solution_board () {  // builds a solved board for comparision to current one
+	  var int i;
+	  let i = 0;
+	  while (i < 16) {
+	    let solution_board [i] = i + 1;
+	    let i = i + 1;
+	  }
+	  return;
+	}
+
+	method void build_valid_input_ref () {  //  builds array to check validity of keyed input
+	  let valid_input_ref[0]=78; // n
+	  let valid_input_ref[1]=65; // a
+	  let valid_input_ref[2]=69; // e
+	  let valid_input_ref[3]=130;  //  left arrow
+	  let valid_input_ref[4]=131;  // up arrow
+	  let valid_input_ref[5]=132;  //  right arrow
+	  let valid_input_ref[6]=133;  //  down arrow
+      return;
+	}
+}
+

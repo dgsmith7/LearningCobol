@@ -1,0 +1,11 @@
+class Main {
+
+
+	function void main () {
+		var SlidePuzzle game;
+		let game = SlidePuzzle.new();
+		do game.run();
+		do game.dispose();
+		return;
+	}
+}
