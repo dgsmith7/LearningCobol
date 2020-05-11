@@ -14,9 +14,9 @@ FILE-CONTROL.
            ORGANIZATION IS LINE SEQUENTIAL.
     SELECT PreDefTableFile ASSIGN TO "PreDefTable.txt" 
            ORGANIZATION IS LINE SEQUENTIAL.
-    SELECT DataFile ASSIGN TO "SlidePuzzle.asm"
+    SELECT InputDataFile ASSIGN TO "Mult.asm"
            ORGANIZATION IS LINE SEQUENTIAL.
-    SELECT OutputFile ASSIGN TO "SlidePuzzle.hack"
+    SELECT OutputFile ASSIGN TO "Mult.hack"
            ORGANIZATION IS LINE SEQUENTIAL.
 
 DATA DIVISION.
@@ -37,27 +37,26 @@ FD PreDefTableFile.
 01 PreDefTable.
     02 PreDefInt PIC X(16).
     02 PreDefAsm PIC X(6).
-*>FD DataFile.  *>This is where the name of the file goes.  Will do user input name later.
-*>FD OutputFile. 
+FD InputDataFile. 
+01  InputDataTable PIC X(80).
+FD OutputFile. 
+01  HackCode PIC X(16).
 WORKING-STORAGE SECTION.
 01  LF PIC X.
 01  ROMAddress PIC 9(5) VALUE ZEROS.
 01  RAMAddress PIC 9(5) VALUE 16.
-01  DisplayLine.
+01  HackLine.
     02 AorC PIC XXX.
     02 CompSect PIC X(7).
     02 DestSect PIC XXX.
     02 JumpSect PIC XXX.
-01  CompKey PIC X(7).
-*>01  UserDefTable.
-*>    02 UserDefSym OCCURS 500 TIMES X(80).
-*>    02 UserDefBin OCCURS 500 TIMES X(16).
-*>01  InputData.
-*>    02 Lines OCCURS 1000 TIMES X(80).
+01  UserDefTable.
+    02 UserDefSym OCCURS 500 TIMES PIC X(80).
+    02 UserDefBin OCCURS 500 TIMES PIC X(16).
 01  CurrentLine PIC X(80).
 01  LineIndex PIC 9(4).
 *>01  OutputData.
-*>    02 BinLines OCCURS 1000 TIMES x(80).
+*>    02 BinLines OCCURS 1000 TIMES PIC x(80).
 
 PROCEDURE DIVISION.
 Begin.
@@ -76,6 +75,10 @@ Begin.
     OPEN INPUT PreDefTableFile
     READ PreDefTableFile
        AT END MOVE HIGH-VALUES TO PreDefTable
+    END-READ
+    OPEN INPUT InputDataFile
+    READ InputDataFile
+       AT END MOVE HIGH-VALUES TO InputDataTable
     END-READ
     PERFORM UNTIL CompTable = HIGH-VALUES
        DISPLAY CompAsm SPACE CompBin
@@ -108,37 +111,39 @@ Begin.
        END-READ
     END-PERFORM
     DISPLAY LF
+    PERFORM UNTIL InputDataTable = HIGH-VALUES
+       DISPLAY InputDataTable
+       READ InputDataFile
+          AT END MOVE HIGH-VALUES TO InputDataTable
+       END-READ
+    END-PERFORM
+    DISPLAY LF
     CLOSE CompTableFile
     CLOSE DestTableFile
     CLOSE JumpTableFile
     CLOSE PreDefTableFile
-*> new stuff below
-*>   OPEN INPUT CompTableFile
-*>   READ CompTableFile
-*>     AT END MOVE HIGH-VALUES TO CompTable
-*>   END-READ
-*>   PERFORM UNTIL CompTable = HIGH-VALUES
-*>     IF CompAsm = 'D' THEN 
-*>       DISPLAY CompBin
-*>     END-IF
-*>     READ CompTableFile
-*>        AT END MOVE HIGH-VALUES TO CompTable
-*>     END-READ
-*>   END-PERFORM
-*>   CLOSE CompTableFile
-*>    MOVE '0001100' TO CompKey
-*>    READ CompTableFile CompBin IS CompKey
-*>        INVALID DISPLAY 'No such record'
-*>        NOT INVALID DISPLAY CompAsm
-*>    END-READ 
+    Close InputDataFile
+    OPEN OUTPUT OutputFile
+    MOVE "1111101011100001" TO HackCode
+    WRITE HackCode
+    MOVE "0000101101011010" TO HackCode
+    WRITE HackCode
+    CLOSE OutputFile
+ 
+     OPEN INPUT OutputFile
+    READ OutputFile
+       AT END MOVE HIGH-VALUES TO HackCode
+    END-READ
+    PERFORM UNTIL HackCode = HIGH-VALUES
+       DISPLAY HackCode
+       READ OutputFile
+          AT END MOVE HIGH-VALUES TO HackCode
+       END-READ
+    END-PERFORM
+    DISPLAY LF
 
-*>    MOVE "1111" to AorC
-*>    MOVE CompBin (1) to CompSect
-*>    MOVE DestBin (1) to DestSect
-*>    MOVE JumpBin (1) to JumpSect 
-*>    DISPLAY DisplayLine
+   STOP RUN.
 
-    STOP RUN.
 *>  Build compDestJumpPredef tables
 *>  first pass - if array has more lines advance
 *>    ignore comments and white toclassify
