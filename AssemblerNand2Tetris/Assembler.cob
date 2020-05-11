@@ -60,25 +60,10 @@ WORKING-STORAGE SECTION.
 
 PROCEDURE DIVISION.
 Begin.
+*>>>>>>>>>>>>>>>>>>>> Traverse and read the comp table
     OPEN INPUT CompTableFile
     READ CompTableFile
        AT END MOVE HIGH-VALUES TO CompTable
-    END-READ
-    OPEN INPUT DestTableFile
-    READ DestTableFile
-       AT END MOVE HIGH-VALUES TO DestTable
-    END-READ
-    OPEN INPUT JumpTableFile
-    READ JumpTableFile
-       AT END MOVE HIGH-VALUES TO JumpTable
-    END-READ
-    OPEN INPUT PreDefTableFile
-    READ PreDefTableFile
-       AT END MOVE HIGH-VALUES TO PreDefTable
-    END-READ
-    OPEN INPUT InputDataFile
-    READ InputDataFile
-       AT END MOVE HIGH-VALUES TO InputDataTable
     END-READ
     PERFORM UNTIL CompTable = HIGH-VALUES
        DISPLAY CompAsm SPACE CompBin
@@ -90,6 +75,12 @@ Begin.
      END-IF
     END-PERFORM
     DISPLAY LF
+    CLOSE CompTableFile
+*>>>>>>>>>>>>>>>>>>>> Traverse and read the dest table
+    OPEN INPUT DestTableFile
+    READ DestTableFile
+       AT END MOVE HIGH-VALUES TO DestTable
+    END-READ
     PERFORM UNTIL DestTable = HIGH-VALUES
        DISPLAY DestAsm SPACE DestBin
        READ DestTableFile
@@ -97,6 +88,12 @@ Begin.
        END-READ
     END-PERFORM
     DISPLAY LF
+    CLOSE DestTableFile
+*>>>>>>>>>>>>>>>>>>>> Traverse and read the jump table
+    OPEN INPUT JumpTableFile
+    READ JumpTableFile
+       AT END MOVE HIGH-VALUES TO JumpTable
+    END-READ
     PERFORM UNTIL JumpTable = HIGH-VALUES
        DISPLAY JumpAsm SPACE JumpBin
        READ JumpTableFile
@@ -104,6 +101,12 @@ Begin.
        END-READ
     END-PERFORM
     DISPLAY LF
+    CLOSE JumpTableFile
+*>>>>>>>>>>>>>>>>>>>> Traverse and read the predefined table
+    OPEN INPUT PreDefTableFile
+    READ PreDefTableFile
+       AT END MOVE HIGH-VALUES TO PreDefTable
+    END-READ
     PERFORM UNTIL PreDefTable = HIGH-VALUES
        DISPLAY PreDefAsm SPACE PreDefInt
        READ PreDefTableFile
@@ -111,6 +114,12 @@ Begin.
        END-READ
     END-PERFORM
     DISPLAY LF
+    CLOSE PreDefTableFile
+*>>>>>>>>>>>>>>>>>>>> Traverse and read the input data file
+    OPEN INPUT InputDataFile
+    READ InputDataFile
+       AT END MOVE HIGH-VALUES TO InputDataTable
+    END-READ
     PERFORM UNTIL InputDataTable = HIGH-VALUES
        DISPLAY InputDataTable
        READ InputDataFile
@@ -118,19 +127,16 @@ Begin.
        END-READ
     END-PERFORM
     DISPLAY LF
-    CLOSE CompTableFile
-    CLOSE DestTableFile
-    CLOSE JumpTableFile
-    CLOSE PreDefTableFile
     Close InputDataFile
+*>>>>>>>>>>>>>>>>>>>> create and write the output file
     OPEN OUTPUT OutputFile
     MOVE "1111101011100001" TO HackCode
     WRITE HackCode
     MOVE "0000101101011010" TO HackCode
     WRITE HackCode
     CLOSE OutputFile
- 
-     OPEN INPUT OutputFile
+*>>>>>>>>>>>>>>>>>>>> Traverse and read the output file
+    OPEN INPUT OutputFile
     READ OutputFile
        AT END MOVE HIGH-VALUES TO HackCode
     END-READ
@@ -141,10 +147,10 @@ Begin.
        END-READ
     END-PERFORM
     DISPLAY LF
-
-   STOP RUN.
+  STOP RUN.
 
 *>  Build compDestJumpPredef tables
+
 *>  first pass - if array has more lines advance
 *>    ignore comments and white toclassify
 *>    A or C - romAddress++
