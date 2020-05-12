@@ -58,8 +58,13 @@ WORKING-STORAGE SECTION.
 01  FirstChar PIC X.
 01  ConvertedNum PIC 9(15).
 01  ConvertedBin PIC X(15).
-01  AnInteger PIC 9(5) VALUE 255.
+01  AnInteger PIC 9(5) VALUE 32768.
 01  ABinaryString PIC X(16).
+01  DigitCounter PIC 99.
+01  ExponCounter PIC 99.
+01  Expon PIC 9(5).
+01  ConvDivResult PIC 9(5).
+01  BinStringPlace PIC 99 VALUE 1.
 *>01  OutputData.
 *>    02 BinLines OCCURS 1000 TIMES PIC x(80).
 
@@ -160,25 +165,37 @@ Begin.
     DISPLAY LF
     CLOSE InputDataFile
 *>>>>>>>>>>>>>>>>>>>> convert a numer to a binary String
- String convertIntToBin (int n) {
-  String bin = str(n) + " = ";
-  int expon = 1;
-  for (int i = 15; i > -1; i --) {
-    expon = 1;
-    for (int j = 0; j < i; j++) {
-      expon = expon * 2;
-    } 
-    println(i, expon);
-    if ((n / expon) >= 1) {
-      bin = bin + "1";
-      n = n - expon;
-    } else {
-      bin = bin + "0";
-    }
-    
-  }
-  return bin;
-}
+*>01  AnInteger PIC 9(5) VALUE 255.
+*>01  ABinaryString PIC X(16).
+*>01  DigitCounter PIC 99.
+*>01  ExponCounter PIC 99.
+*>01  Expon PIC 9(5).
+*>01  ConvDivResult PIC 9(5).
+*>01  BinStringPlace PIC 99 VALUE 1.
+DISPLAY AnInteger WITH NO ADVANCING
+PERFORM VARYING DigitCounter FROM 15 BY -1 
+        UNTIL DigitCounter = 0
+  MOVE 1 to Expon
+  PERFORM VARYING ExponCounter FROM 0 BY 1
+        UNTIL ExponCounter = DigitCounter 
+    MULTIPLY Expon BY 2 GIVING Expon
+  END-PERFORM
+  DIVIDE Expon INTO AnInteger GIVING ConvDivResult
+  IF ConvDivResult >= 1
+    STRING ABinaryString DELIMITED BY SPACES
+           "1" DELIMITED BY SIZE
+      INTO ABinaryString
+    END-STRING
+    SUBTRACT Expon FROM AnInteger GIVING AnInteger
+   ELSE
+     STRING ABinaryString DELIMITED BY SPACES
+            "0" DELIMITED BY SIZE
+       INTO ABinaryString
+     END-STRING
+  END-IF
+END-PERFORM
+DISPLAY " equals " WITH NO ADVANCING
+DISPLAY ABinaryString
 *>>>>>>>>>>>>>>>>>>>> create and write the output file
     OPEN OUTPUT OutputFile
     MOVE "1111101011100001" TO HackCode
