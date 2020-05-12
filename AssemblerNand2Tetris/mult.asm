@@ -5,8 +5,7 @@
 
 // Multiplies R0 and R1 and stores the result in R2.
 // (R0, R1, R2 refer to RAM[0], RAM[1], and RAM[2], respectively.)
-@yoMamasHouse
-@8711
+
 // Put your code here.
 //@R1
 //D=M

@@ -45,6 +45,8 @@ WORKING-STORAGE SECTION.
 01  LF PIC X.
 01  ROMAddress PIC 9(5) VALUE ZEROS.
 01  RAMAddress PIC 9(5) VALUE 16.
+01  CharHolder PIC X.
+01  LabelName PIC X(40).
 01  HackLine.
     02 AorC PIC XXX.
     02 CompSect PIC X(7).
@@ -53,6 +55,8 @@ WORKING-STORAGE SECTION.
 01  UserDefTable.
     02 UserDefSym OCCURS 500 TIMES PIC X(80).
     02 UserDefBin OCCURS 500 TIMES PIC X(16).
+01  UserDefSize PIC 999 VALUE ZEROES.
+01  UserDefCounter PIC 999 VALUE 001.
 01  CurrentLine PIC X(80).
 01  LineIndex PIC 9(4).
 01  FirstChar PIC X.
@@ -69,8 +73,175 @@ WORKING-STORAGE SECTION.
 *>01  OutputData.
 *>    02 BinLines OCCURS 1000 TIMES PIC x(80).
 
+*>  Build compDestJumpPredef tables
+
 PROCEDURE DIVISION.
 Begin.
+*>>>>> First Pass <<<<<
+DISPLAY LF
+DISPLAY "First Pass:"
+DISPLAY LF
+*>>>>>>>>>>>>>>>>>>>> Traverse and read the input data file
+    OPEN INPUT InputDataFile
+    READ InputDataFile
+       AT END MOVE HIGH-VALUES TO InputDataTable
+    END-READ
+    PERFORM UNTIL InputDataTable = HIGH-VALUES
+       DISPLAY InputDataTable
+       MOVE InputDataTable(1:1) TO FirstChar 
+       MOVE InputDataTable(2:1) TO SecondChar 
+       DISPLAY FirstChar " - " WITH NO ADVANCING
+       IF FirstChar = " "
+         DISPLAY "White Space - No action required"
+        ELSE 
+          IF FirstChar = "/"
+            DISPLAY "Comment - No action required"
+           ELSE 
+             IF FirstChar = "("
+               DISPLAY "L-Command"
+               *> extract label name from string
+               UNSTRING InputDataTable DELIMITED BY "("
+                 INTO CharHolder, LabelName
+               END-UNSTRING
+               UNSTRING LabelName DELIMITED BY ")"
+                 INTO LabelName, CharHolder
+               END-UNSTRING
+               DISPLAY LabelName WITH NO ADVANCING
+               DISPLAY " at address " RomAddress WITH NO ADVANCING
+               *> convert romaddress to binary
+*>>>>>>>>>>>>>>>>>>>> convert a numer to a binary String
+               MOVE RomAddress TO AnInteger
+               MOVE SPACES TO ABinaryString
+               DISPLAY " Converting " AnInteger " " WITH NO ADVANCING
+               PERFORM VARYING DigitCounter FROM 15 BY -1 
+                       UNTIL DigitCounter = 0
+                 MOVE 1 to Expon
+                 PERFORM VARYING ExponCounter FROM 0 BY 1
+                       UNTIL ExponCounter = DigitCounter - 1 
+                   MULTIPLY Expon BY 2 GIVING Expon
+                 END-PERFORM
+                 DIVIDE Expon INTO AnInteger GIVING ConvDivResult
+                 IF ConvDivResult >= 1
+                   STRING ABinaryString DELIMITED BY SPACES
+                          "1" DELIMITED BY SIZE
+                     INTO ABinaryString
+                   END-STRING
+                   SUBTRACT Expon FROM AnInteger GIVING AnInteger
+                  ELSE
+                    STRING ABinaryString DELIMITED BY SPACES
+                           "0" DELIMITED BY SIZE
+                      INTO ABinaryString
+                    END-STRING
+                 END-IF
+               END-PERFORM
+               DISPLAY " to binary " WITH NO ADVANCING
+               DISPLAY ABinaryString
+    *> stick both in userDef table and userdeftablecounter++
+               MOVE LabelName to UserDefSym(UserDefCounter)
+               MOVE ABinaryString to UserDefBin(UserDefCounter)
+               ADD 1 TO UserDefCounter
+               ADD 1 TO UserDefSize
+              ELSE 
+                IF FirstChar = "@"
+                  ADD 1 TO RomAddress
+                  DISPLAY "A-Command - Incrementing ROM Address to " RomAddress
+                 ELSE 
+                  ADD 1 TO RomAddress
+                   DISPLAY "C-Command - Incrementing ROM Address to " RomAddress
+                END-IF
+             END-IF
+          END-IF
+       END-IF 
+       DISPLAY LF
+       READ InputDataFile
+          AT END MOVE HIGH-VALUES TO InputDataTable
+       END-READ
+    END-PERFORM
+    CLOSE InputDataFile
+
+*>01  HackLine.
+*>    02 AorC PIC XXX.
+*>    02 CompSect PIC X(7).
+*>    02 DestSect PIC XXX.
+*>    02 JumpSect PIC XXX.
+*>01  UserDefTable.
+*>    02 UserDefSym OCCURS 500 TIMES PIC X(80).
+*>    02 UserDefBin OCCURS 500 TIMES PIC X(16).
+*>01  UserDefSize PIC 999 VALUE ZEROES.
+*>01  UserDefCounter PIC 999 VALUE 001.
+
+DISPLAY LF
+DISPLAY "Second Pass:"
+DISPLAY LF
+MOVE SPACES TO HackString
+   OPEN INPUT InputDataFile
+    READ InputDataFile
+       AT END MOVE HIGH-VALUES TO InputDataTable
+    END-READ
+    PERFORM UNTIL InputDataTable = HIGH-VALUES
+       DISPLAY InputDataTable
+       MOVE InputDataTable(1:1) TO FirstChar 
+       MOVE InputDataTable(2:1) TO SecondChar 
+       *> test userdef readWrite of UserDefTable
+       MOVE FirstChar to UserDefSym(UserDefCounter)
+       MOVE SecondChar to UserDefBin(UserDefCounter)
+       ADD 1 TO UserDefCounter
+       ADD 1 TO UserDefSize
+       DISPLAY FirstChar " - " WITH NO ADVANCING
+       IF FirstChar = " "
+         DISPLAY "White Space"
+        ELSE 
+          IF FirstChar = "/"
+            DISPLAY "Comment"
+           ELSE 
+             IF FirstChar = "("
+               DISPLAY "L-Command"
+              ELSE 
+                IF FirstChar = "@"
+                  DISPLAY "A-Command"
+                  ADD 1 TO RomAddress
+*> check to see if the second char is a number or not
+                  DISPLAY "Second char is " WITH NO ADVANCING
+                  DISPLAY SecondChar WITH NO ADVANCING
+                  MOVE 0 to NumCount
+                  INSPECT SecondChar TALLYING 
+                    NumCount FOR ALL "0" "1" "2" "3" "4" "5" "6" "7" "8" "9"
+                  IF NumCount > 0 
+                    DISPLAY " - a number"
+                    ELSE 
+                      DISPLAY " - not a number"
+                  END-IF
+                 ELSE 
+                   DISPLAY "C-Command " WITH NO ADVANCING
+*> convert alphanumeric to numeric                   
+                   MOVE FirstChar TO ConvertedNum
+                   ADD 2 TO ConvertedNum
+                   MOVE ConvertedNum to ConvertedBin
+                   DISPLAY ConvertedNum WITH NO ADVANCING
+                   DISPLAY "<- as AlphuNum or as String -> " WITH NO ADVANCING
+                   DISPLAY ConvertedBin
+                END-IF
+             END-IF
+          END-IF
+       END-IF 
+       READ InputDataFile
+          AT END MOVE HIGH-VALUES TO InputDataTable
+       END-READ
+    END-PERFORM
+    DISPLAY LF
+    CLOSE InputDataFile
+
+*>>>>>>>>>>>>>>>>>>>> Read UserDefTable
+DISPLAY "User Defined Table"
+MOVE 1 TO UserDefCounter
+PERFORM VARYING UserDefCounter FROM 1 BY 1
+UNTIL UserDefCounter = UserDefSize + 1
+  DISPLAY UserDefSym(UserDefCounter) WITH NO ADVANCING
+  DISPLAY " - " WITH NO ADVANCING 
+  DISPLAY UserDefBin(UserDefCounter)
+END-PERFORM
+DISPLAY LF
+
 *>>>>>>>>>>>>>>>>>>>> Traverse and read the comp table
     OPEN INPUT CompTableFile
     READ CompTableFile
@@ -126,57 +297,6 @@ Begin.
     END-PERFORM
     DISPLAY LF
     CLOSE PreDefTableFile
-*>>>>>>>>>>>>>>>>>>>> Traverse and read the input data file
-    OPEN INPUT InputDataFile
-    READ InputDataFile
-       AT END MOVE HIGH-VALUES TO InputDataTable
-    END-READ
-    PERFORM UNTIL InputDataTable = HIGH-VALUES
-       DISPLAY InputDataTable
-       MOVE InputDataTable(1:1) TO FirstChar 
-       MOVE InputDataTable(2:1) TO SecondChar 
-       DISPLAY FirstChar " - " WITH NO ADVANCING
-       IF FirstChar = " "
-         DISPLAY "White Space"
-        ELSE 
-          IF FirstChar = "/"
-            DISPLAY "Comment"
-           ELSE 
-             IF FirstChar = "("
-               DISPLAY "L-Command"
-              ELSE 
-                IF FirstChar = "@"
-                  DISPLAY "A-Command"
-*> check to see if the second char is a number or not
-                  DISPLAY "Second char is " WITH NO ADVANCING
-                  DISPLAY SecondChar WITH NO ADVANCING
-                  MOVE 0 to NumCount
-                  INSPECT SecondChar TALLYING 
-                    NumCount FOR ALL "0" "1" "2" "3" "4" "5" "6" "7" "8" "9"
-                  IF NumCount > 0 
-                    DISPLAY " - a number"
-                    ELSE 
-                      DISPLAY " - not a number"
-                  END-IF
-                 ELSE 
-                   DISPLAY "C-Command " WITH NO ADVANCING
-*> convert alphanumeric to numeric                   
-                   MOVE FirstChar TO ConvertedNum
-                   ADD 2 TO ConvertedNum
-                   MOVE ConvertedNum to ConvertedBin
-                   DISPLAY ConvertedNum WITH NO ADVANCING
-                   DISPLAY "<- as AlphuNum or as String -> " WITH NO ADVANCING
-                   DISPLAY ConvertedBin
-                END-IF
-             END-IF
-          END-IF
-       END-IF 
-       READ InputDataFile
-          AT END MOVE HIGH-VALUES TO InputDataTable
-       END-READ
-    END-PERFORM
-    DISPLAY LF
-    CLOSE InputDataFile
 *>>>>>>>>>>>>>>>>>>>> convert a numer to a binary String
 DISPLAY AnInteger WITH NO ADVANCING
 PERFORM VARYING DigitCounter FROM 15 BY -1 
@@ -222,25 +342,64 @@ DISPLAY ABinaryString
     END-PERFORM
     DISPLAY LF
     CLOSE OutputFile
-  STOP RUN.
+    STOP RUN.
 
-*>  Build compDestJumpPredef tables
 
-*>  first pass - if array has more lines advance
-*>    length not 0 and 1st char not "/" - toclassify
-*>    First char "@" A or (!"(" & !"@") C - romAddress++
-*>    First char "(" L - put in userdef table with romAddress binary then symbol
-*>  reset to front of array
-*>  second pass- if array has more lines advance
-*>    ignore cooments and white space to classify
-*>      A Cmd - remove @
-*>        If numeric convert to binary and write to file
-*>        else if predef lookup binary and write to file
-*>        else if userdef lookup binary and write to file
-*>        else if new, add to userdef with ramAddress then ramAddress++
-*>      C Cmd
-*>        if contains "=" lookup comp and concat with lookup dest
-*>        else if xontains ";" lookup comp and concat with lookup jump
-*>        concat 111 to front of string
-*>        write to file
-*>    close file
+*>*>>>>>>>>>>>>>> Second Pass
+*> *>>>>>>>>>>>>>>>>>>>> Traverse and read the input data file
+*>   OPEN INPUT InputDataFile
+*>    READ InputDataFile
+*>       AT END MOVE HIGH-VALUES TO InputDataTable
+*>    END-READ
+*>    PERFORM UNTIL InputDataTable = HIGH-VALUES
+*>       DISPLAY InputDataTable
+*>       MOVE InputDataTable(1:1) TO FirstChar 
+*>       MOVE InputDataTable(2:1) TO SecondChar 
+*>       *> test userdef readWrite of UserDefTable
+*>       MOVE FirstChar to UserDefSym(UserDefCounter)
+*>       MOVE SecondChar to UserDefBin(UserDefCounter)
+*>       ADD 1 TO UserDefCounter
+*>       ADD 1 TO UserDefSize
+*>       DISPLAY FirstChar " - " WITH NO ADVANCING
+*>       IF FirstChar = " "
+*>         DISPLAY "White Space"
+*>        ELSE 
+*>          IF FirstChar = "/"
+*>            DISPLAY "Comment"
+*>           ELSE 
+*>             IF FirstChar = "("
+*>               DISPLAY "L-Command"
+*>              ELSE 
+*>                IF FirstChar = "@"
+*>                  DISPLAY "A-Command"
+*>                  ADD 1 TO RomAddress
+*>*> check to see if the second char is a number or not
+*>                  DISPLAY "Second char is " WITH NO ADVANCING
+*>                  DISPLAY SecondChar WITH NO ADVANCING
+*>                  MOVE 0 to NumCount
+*>                  INSPECT SecondChar TALLYING 
+*>                    NumCount FOR ALL "0" "1" "2" "3" "4" "5" "6" "7" "8" "9"
+*>                  IF NumCount > 0 
+*>                    DISPLAY " - a number"
+*>                    ELSE 
+*>                      DISPLAY " - not a number"
+*>                  END-IF
+*>                 ELSE 
+*>                   DISPLAY "C-Command " WITH NO ADVANCING
+*>*> convert alphanumeric to numeric                   
+*>                   MOVE FirstChar TO ConvertedNum
+*>                   ADD 2 TO ConvertedNum
+*>                   MOVE ConvertedNum to ConvertedBin
+*>                   DISPLAY ConvertedNum WITH NO ADVANCING
+*>                   DISPLAY "<- as AlphuNum or as String -> " WITH NO ADVANCING
+*>                   DISPLAY ConvertedBin
+*>                END-IF
+*>             END-IF
+*>          END-IF
+*>       END-IF 
+*>       READ InputDataFile
+*>          AT END MOVE HIGH-VALUES TO InputDataTable
+*>       END-READ
+*>    END-PERFORM
+*>    DISPLAY LF
+*>    CLOSE InputDataFile
