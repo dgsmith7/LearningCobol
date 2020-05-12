@@ -56,6 +56,7 @@ WORKING-STORAGE SECTION.
 01  CurrentLine PIC X(80).
 01  LineIndex PIC 9(4).
 01  FirstChar PIC X.
+01  SecondChar PIC X.
 01  ConvertedNum PIC 9(15).
 01  ConvertedBin PIC X(15).
 01  AnInteger PIC 9(5) VALUE 32768.
@@ -64,7 +65,7 @@ WORKING-STORAGE SECTION.
 01  ExponCounter PIC 99.
 01  Expon PIC 9(5).
 01  ConvDivResult PIC 9(5).
-01  BinStringPlace PIC 99 VALUE 1.
+01  NumCount PIC 99.
 *>01  OutputData.
 *>    02 BinLines OCCURS 1000 TIMES PIC x(80).
 
@@ -133,6 +134,7 @@ Begin.
     PERFORM UNTIL InputDataTable = HIGH-VALUES
        DISPLAY InputDataTable
        MOVE InputDataTable(1:1) TO FirstChar 
+       MOVE InputDataTable(2:1) TO SecondChar 
        DISPLAY FirstChar " - " WITH NO ADVANCING
        IF FirstChar = " "
          DISPLAY "White Space"
@@ -145,6 +147,17 @@ Begin.
               ELSE 
                 IF FirstChar = "@"
                   DISPLAY "A-Command"
+*> check to see if the second char is a number or not
+                  DISPLAY "Second char is " WITH NO ADVANCING
+                  DISPLAY SecondChar WITH NO ADVANCING
+                  MOVE 0 to NumCount
+                  INSPECT SecondChar TALLYING 
+                    NumCount FOR ALL "0" "1" "2" "3" "4" "5" "6" "7" "8" "9"
+                  IF NumCount > 0 
+                    DISPLAY " - a number"
+                    ELSE 
+                      DISPLAY " - not a number"
+                  END-IF
                  ELSE 
                    DISPLAY "C-Command " WITH NO ADVANCING
 *> convert alphanumeric to numeric                   
@@ -165,13 +178,6 @@ Begin.
     DISPLAY LF
     CLOSE InputDataFile
 *>>>>>>>>>>>>>>>>>>>> convert a numer to a binary String
-*>01  AnInteger PIC 9(5) VALUE 255.
-*>01  ABinaryString PIC X(16).
-*>01  DigitCounter PIC 99.
-*>01  ExponCounter PIC 99.
-*>01  Expon PIC 9(5).
-*>01  ConvDivResult PIC 9(5).
-*>01  BinStringPlace PIC 99 VALUE 1.
 DISPLAY AnInteger WITH NO ADVANCING
 PERFORM VARYING DigitCounter FROM 15 BY -1 
         UNTIL DigitCounter = 0
