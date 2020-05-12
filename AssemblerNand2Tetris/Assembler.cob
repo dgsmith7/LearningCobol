@@ -36,7 +36,7 @@ FD JumpTableFile.
 FD PreDefTableFile.
 01 PreDefTable.
     02 PreDefBin PIC X(16).
-    02 PreDefAsm PIC X(6).
+    02 PreDefAsm PIC X(40).
 FD InputDataFile. 
 01  InputDataTable PIC X(80).
 FD OutputFile. 
@@ -237,15 +237,18 @@ READ InputDataFile
                     
                     ELSE 
                       DISPLAY " - not a number"
+                      UNSTRING AddressString DELIMITED BY " "
+                        INTO AddressString, CharHolder
+                      END-UNSTRING
                       OPEN INPUT PreDefTableFile
                       READ PreDefTableFile
                          AT END MOVE HIGH-VALUES TO PreDefTable
                       END-READ
                       PERFORM UNTIL PreDefTable = HIGH-VALUES
-                         DISPLAY PreDefAsm SPACE PreDefBin
                          MOVE SPACES TO PreDefCompareString
-                         MOVE SPACE, PreDefAsm TO PreDefCompareString
-                         DISPLAY "PDC =" PreDefCompareString
+                         UNSTRING PreDefAsm DELIMITED BY "+"
+                           INTO CharHolder, PreDefCompareString
+                         END-UNSTRING
                          IF AddressString = PreDefCompareString
                            MOVE PreDefBin to HackLine
                            DISPLAY "Hack = " HackLine
