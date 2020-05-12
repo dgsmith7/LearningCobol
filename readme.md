@@ -1,4 +1,4 @@
-This folder contains programs I have written as a way of learning COBOL.
+This folder contains programs I have written (or am writing) as a way of learning COBOL.
 
 I am using the "Assembler" project from the Nand2Tetris course (Chapter 6) as the first major project.
 
