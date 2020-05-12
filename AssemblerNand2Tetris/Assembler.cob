@@ -58,6 +58,8 @@ WORKING-STORAGE SECTION.
 01  FirstChar PIC X.
 01  ConvertedNum PIC 9(15).
 01  ConvertedBin PIC X(15).
+01  AnInteger PIC 9(5) VALUE 255.
+01  ABinaryString PIC X(16).
 *>01  OutputData.
 *>    02 BinLines OCCURS 1000 TIMES PIC x(80).
 
@@ -140,11 +142,12 @@ Begin.
                   DISPLAY "A-Command"
                  ELSE 
                    DISPLAY "C-Command " WITH NO ADVANCING
+*> convert alphanumeric to numeric                   
                    MOVE FirstChar TO ConvertedNum
                    ADD 2 TO ConvertedNum
                    MOVE ConvertedNum to ConvertedBin
                    DISPLAY ConvertedNum WITH NO ADVANCING
-                   DISPLAY " " WITH NO ADVANCING
+                   DISPLAY "<- as AlphuNum or as String -> " WITH NO ADVANCING
                    DISPLAY ConvertedBin
                 END-IF
              END-IF
@@ -156,6 +159,26 @@ Begin.
     END-PERFORM
     DISPLAY LF
     CLOSE InputDataFile
+*>>>>>>>>>>>>>>>>>>>> convert a numer to a binary String
+ String convertIntToBin (int n) {
+  String bin = str(n) + " = ";
+  int expon = 1;
+  for (int i = 15; i > -1; i --) {
+    expon = 1;
+    for (int j = 0; j < i; j++) {
+      expon = expon * 2;
+    } 
+    println(i, expon);
+    if ((n / expon) >= 1) {
+      bin = bin + "1";
+      n = n - expon;
+    } else {
+      bin = bin + "0";
+    }
+    
+  }
+  return bin;
+}
 *>>>>>>>>>>>>>>>>>>>> create and write the output file
     OPEN OUTPUT OutputFile
     MOVE "1111101011100001" TO HackCode
