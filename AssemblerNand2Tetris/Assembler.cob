@@ -55,6 +55,9 @@ WORKING-STORAGE SECTION.
     02 UserDefBin OCCURS 500 TIMES PIC X(16).
 01  CurrentLine PIC X(80).
 01  LineIndex PIC 9(4).
+01  FirstChar PIC X.
+01  ConvertedNum PIC 9(15).
+01  ConvertedBin PIC X(15).
 *>01  OutputData.
 *>    02 BinLines OCCURS 1000 TIMES PIC x(80).
 
@@ -122,12 +125,37 @@ Begin.
     END-READ
     PERFORM UNTIL InputDataTable = HIGH-VALUES
        DISPLAY InputDataTable
+       MOVE InputDataTable(1:1) TO FirstChar 
+       DISPLAY FirstChar " - " WITH NO ADVANCING
+       IF FirstChar = " "
+         DISPLAY "White Space"
+        ELSE 
+          IF FirstChar = "/"
+            DISPLAY "Comment"
+           ELSE 
+             IF FirstChar = "("
+               DISPLAY "L-Command"
+              ELSE 
+                IF FirstChar = "@"
+                  DISPLAY "A-Command"
+                 ELSE 
+                   DISPLAY "C-Command " WITH NO ADVANCING
+                   MOVE FirstChar TO ConvertedNum
+                   ADD 2 TO ConvertedNum
+                   MOVE ConvertedNum to ConvertedBin
+                   DISPLAY ConvertedNum WITH NO ADVANCING
+                   DISPLAY " " WITH NO ADVANCING
+                   DISPLAY ConvertedBin
+                END-IF
+             END-IF
+          END-IF
+       END-IF 
        READ InputDataFile
           AT END MOVE HIGH-VALUES TO InputDataTable
        END-READ
     END-PERFORM
     DISPLAY LF
-    Close InputDataFile
+    CLOSE InputDataFile
 *>>>>>>>>>>>>>>>>>>>> create and write the output file
     OPEN OUTPUT OutputFile
     MOVE "1111101011100001" TO HackCode
@@ -147,14 +175,15 @@ Begin.
        END-READ
     END-PERFORM
     DISPLAY LF
+    CLOSE OutputFile
   STOP RUN.
 
 *>  Build compDestJumpPredef tables
 
 *>  first pass - if array has more lines advance
-*>    ignore comments and white toclassify
-*>    A or C - romAddress++
-*>    L - put in userdef table with romAddress binary
+*>    length not 0 and 1st char not "/" - toclassify
+*>    First char "@" A or (!"(" & !"@") C - romAddress++
+*>    First char "(" L - put in userdef table with romAddress binary then symbol
 *>  reset to front of array
 *>  second pass- if array has more lines advance
 *>    ignore cooments and white space to classify
