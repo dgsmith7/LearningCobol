@@ -59,6 +59,7 @@ WORKING-STORAGE SECTION.
     02 UserDefBin OCCURS 500 TIMES PIC X(16).
 01  UserDefSize PIC 999 VALUE ZEROES.
 01  UserDefCounter PIC 999 VALUE 001.
+01  UserDefCapture PIC 99.
 01  CompHash.
     02 CompBinary OCCURS 28 TIMES PIC X(7).
     02 CompAssembly OCCURS 28 TIMES PIC XXX.
@@ -75,6 +76,7 @@ WORKING-STORAGE SECTION.
     02 PreDefBinary OCCURS 23 TIMES PIC X(16).
     02 PreDefAssembly OCCURS 23 TIMES PIC X(40).
 01  PreDefCounter PIC 999 VALUE 001.
+01  PreDefCapture PIC 99.
 01  CurrentLine PIC X(80).
 01  LineIndex PIC 9(4).
 01  FirstChar PIC X.
@@ -96,233 +98,321 @@ WORKING-STORAGE SECTION.
 
 PROCEDURE DIVISION.
 Begin.
-*>>>>> First Pass <<<<<
-*>DISPLAY LF
-*>DISPLAY "First Pass:"
-*>DISPLAY LF
-*>*>>>>>>>>>>>>>>>>>>>> Traverse and read the input data file
-*>OPEN INPUT InputDataFile
-*>READ InputDataFile
-*>  AT END MOVE HIGH-VALUES TO InputDataTable
-*>END-READ
-*>PERFORM UNTIL InputDataTable = HIGH-VALUES
-*>  DISPLAY InputDataTable
-*>  MOVE InputDataTable(1:1) TO FirstChar 
-*>  MOVE InputDataTable(2:1) TO SecondChar 
-*>  IF FirstChar = " "
-*>    DISPLAY "White Space - No action required"
-*>    ELSE 
-*>      IF FirstChar = "/"
-*>        DISPLAY "Comment - No action required"
-*>        ELSE 
-*>          IF FirstChar = "("
-*>            DISPLAY "L-Command " WITH NO ADVANCING
-*>            *> extract label name from string
-*>            UNSTRING InputDataTable DELIMITED BY "("
-*>              INTO CharHolder, LabelName
-*>            END-UNSTRING
-*>            UNSTRING LabelName DELIMITED BY ")"
-*>              INTO LabelName, CharHolder
-*>            END-UNSTRING
-*>            DISPLAY LabelName WITH NO ADVANCING
-*>            DISPLAY " at address " RomAddress WITH NO ADVANCING
-*>            *> convert romaddress to binary
-*>            MOVE RomAddress TO AnInteger
-*>            MOVE SPACES TO ABinaryString
-*>            DISPLAY " Converting " AnInteger " " WITH NO ADVANCING
-*>            PERFORM VARYING DigitCounter FROM 15 BY -1 
-*>                    UNTIL DigitCounter = 0
-*>              MOVE 1 to Expon
-*>              PERFORM VARYING ExponCounter FROM 0 BY 1
-*>                      UNTIL ExponCounter = DigitCounter - 1 
-*>                MULTIPLY Expon BY 2 GIVING Expon
-*>              END-PERFORM *>ExponCounter
-*>              DIVIDE Expon INTO AnInteger GIVING ConvDivResult
-*>              IF ConvDivResult >= 1
-*>                STRING ABinaryString DELIMITED BY SPACES
-*>                      "1" DELIMITED BY SIZE
-*>                       INTO ABinaryString
-*>                END-STRING
-*>                SUBTRACT Expon FROM AnInteger GIVING AnInteger
-*>                ELSE
-*>                  STRING ABinaryString DELIMITED BY SPACES
-*>                         "0" DELIMITED BY SIZE
-*>                         INTO ABinaryString
-*>                  END-STRING
-*>              END-IF
-*>            END-PERFORM *>DigitCounter
-*>            DISPLAY " to binary " WITH NO ADVANCING
-*>            DISPLAY ABinaryString
-*>            *> put label and binary ROM address into userDef table
-*>            MOVE LabelName to UserDefSym(UserDefCounter)
-*>            MOVE ABinaryString to UserDefBin(UserDefCounter)
-*>            ADD 1 TO UserDefCounter
-*>            ADD 1 TO UserDefSize
-*>            ELSE 
-*>              IF FirstChar = "@"
-*>                ADD 1 TO RomAddress
-*>                DISPLAY "A-Command - Incrementing ROM Address to " RomAddress
-*>                ELSE 
-*>                  ADD 1 TO RomAddress
-*>                  DISPLAY "C-Command - Incrementing ROM Address to " RomAddress
-*>              END-IF *>FirstChar @
-*>          END-IF *>First char (
-*>      END-IF *>First Char /
-*>  END-IF *>First Char " "
-*>  DISPLAY LF
-*>  READ InputDataFile
-*>       AT END MOVE HIGH-VALUES TO InputDataTable
-*>  END-READ
-*>END-PERFORM *>InputDataFile
-*>CLOSE InputDataFile
-*>*>>>>> Second Pass <<<<<
-*>DISPLAY LF
-*>DISPLAY "Second Pass:"
-*>DISPLAY LF
-*>MOVE SPACES TO HackLine
-*>OPEN INPUT InputDataFile
-*>READ InputDataFile
-*>     AT END MOVE HIGH-VALUES TO InputDataTable
-*>END-READ
-*>PERFORM UNTIL InputDataTable = HIGH-VALUES
-*>  DISPLAY InputDataTable
-*>  MOVE InputDataTable(1:1) TO FirstChar 
-*>  MOVE InputDataTable(2:1) TO SecondChar 
-*>  DISPLAY FirstChar " - " WITH NO ADVANCING
-*>*> Ignore comments and white space
-*>  IF FirstChar = "/" OR FirstChar = " "
-*>    DISPLAY "White Space or Comment - no action required"
-*>    ELSE 
-*>*> A-Command
-*>      IF FirstChar = "@"
-*>        DISPLAY "A-Command " WITH NO ADVANCING
-*>        UNSTRING InputDataTable DELIMITED BY "@"
-*>          INTO CharHolder, AddressString
-*>        END-UNSTRING
-*>        MOVE ZEROES TO LetterCount
-*>        INSPECT AddressString TALLYING 
-*>                LetterCount FOR ALL "a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" *>"n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z" "A" "B" "C" "D" "E" *>"F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" *>"X" "Y" "Z"
-*>        IF LetterCount = 0 
-*>          DISPLAY "with numerical address " WITH NO ADVANCING
-*>*> A-Command with numerical address
-*>*> convert numerical address to a binary String
-*>          MOVE AddressString TO AnInteger
-*>          MOVE SPACES TO ABinaryString
-*>          DISPLAY AnInteger " " WITH NO ADVANCING
-*>          PERFORM VARYING DigitCounter FROM 15 BY -1 
-*>                  UNTIL DigitCounter = 0
-*>            MOVE 1 to Expon
-*>            PERFORM VARYING ExponCounter FROM 0 BY 1
-*>                    UNTIL ExponCounter = DigitCounter - 1 
-*>              MULTIPLY Expon BY 2 GIVING Expon
-*>            END-PERFORM *>ExponCounter
-*>            DIVIDE Expon INTO AnInteger GIVING ConvDivResult
-*>            IF ConvDivResult >= 1
-*>              STRING ABinaryString DELIMITED BY SPACES
-*>                     "1" DELIMITED BY SIZE
-*>                     INTO ABinaryString
-*>              END-STRING
-*>              SUBTRACT Expon FROM AnInteger GIVING AnInteger
-*>              ELSE
-*>                STRING ABinaryString DELIMITED BY SPACES
-*>                       "0" DELIMITED BY SIZE
-*>                       INTO ABinaryString
-*>                END-STRING
-*>            END-IF
-*>          END-PERFORM *>DigitCounter
-*>          DISPLAY " to binary " WITH NO ADVANCING
-*>          DISPLAY ABinaryString
-*>          MOVE ABinaryString TO HackLine
-*>          DISPLAY "------------------------------Hack = " HackLine
-*>*> replace with write hackline to output file
-*>          ELSE 
-*>*> A-command with a non-numerical address (LABEL or SYMBOL)
-*>            DISPLAY " with non-numerical " WITH NO ADVANCING
-*>            UNSTRING AddressString DELIMITED BY " "
-*>              INTO AddressString, CharHolder
-*>            END-UNSTRING
-*>            OPEN INPUT PreDefTableFile
-*>            READ PreDefTableFile
-*>               AT END MOVE HIGH-VALUES TO PreDefTable
-*>            END-READ
-*>            PERFORM UNTIL PreDefTable = HIGH-VALUES
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+*>              >>>>>Read data files into RAM<<<<<
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+*> Traverse CompFile and build the comp hash table
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+OPEN INPUT CompTableFile
+READ CompTableFile
+   AT END MOVE HIGH-VALUES TO CompTable
+END-READ
+MOVE ZEROES to CompCounter
+PERFORM UNTIL CompTable = HIGH-VALUES
+   ADD 1 to CompCounter
+   MOVE CompAsm to CompAssembly(CompCounter)
+   MOVE CompBin to CompBinary(CompCounter)
+   READ CompTableFile
+      AT END MOVE HIGH-VALUES TO CompTable
+   END-READ
+END-PERFORM
+CLOSE CompTableFile
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+*> Traverse DestFile and build the dest hash table
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+OPEN INPUT DestTableFile
+READ DestTableFile
+   AT END MOVE HIGH-VALUES TO DestTable
+END-READ
+MOVE ZEROES to DestCounter
+PERFORM UNTIL DestTable = HIGH-VALUES
+   ADD 1 to DestCounter
+   MOVE DestAsm to DestAssembly(DestCounter)
+   MOVE DestBin to DestBinary(DestCounter)
+   READ DestTableFile
+      AT END MOVE HIGH-VALUES TO DestTable
+   END-READ
+END-PERFORM
+CLOSE DestTableFile
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+*> Traverse JumpFile and build the jump hash table
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+OPEN INPUT JumpTableFile
+READ JumpTableFile
+   AT END MOVE HIGH-VALUES TO JumpTable
+END-READ
+MOVE ZEROES to JumpCounter
+PERFORM UNTIL JumpTable = HIGH-VALUES
+   ADD 1 to JumpCounter
+   MOVE JumpAsm to JumpAssembly(JumpCounter)
+   MOVE JumpBin to JumpBinary(JumpCounter)
+   READ JumpTableFile
+      AT END MOVE HIGH-VALUES TO JumpTable
+   END-READ
+END-PERFORM
+CLOSE JumpTableFile
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+*> Traverse PreDefFile and build the pre-def hash table
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+OPEN INPUT PreDefTableFile
+READ PreDefTableFile
+   AT END MOVE HIGH-VALUES TO PreDefTable
+END-READ
+MOVE ZEROES to PreDefCounter
+PERFORM UNTIL PreDefTable = HIGH-VALUES
+   ADD 1 to PreDefCounter
+   UNSTRING PreDefAsm DELIMITED BY "+"
+     INTO CharHolder, PreDefAsm
+   END-UNSTRING
+   MOVE PreDefAsm to PreDefAssembly(PreDefCounter)
+   MOVE PreDefBin to PreDefBinary(PreDefCounter)
+   READ PreDefTableFile
+      AT END MOVE HIGH-VALUES TO PreDefTable
+   END-READ
+END-PERFORM
+CLOSE PreDefTableFile
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+*>                           >>>> First Pass <<<<<
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+DISPLAY LF
+DISPLAY "First Pass:"
+DISPLAY LF
+*>>>>>>>>>>>>>>>>>>>> Traverse and read the input data file
+OPEN INPUT InputDataFile
+READ InputDataFile
+  AT END MOVE HIGH-VALUES TO InputDataTable
+END-READ
+PERFORM UNTIL InputDataTable = HIGH-VALUES
+  DISPLAY InputDataTable
+  MOVE InputDataTable(1:1) TO FirstChar 
+  MOVE InputDataTable(2:1) TO SecondChar 
+  IF FirstChar = " "
+    DISPLAY "White Space - No action required"
+    ELSE 
+      IF FirstChar = "/"
+        DISPLAY "Comment - No action required"
+        ELSE 
+          IF FirstChar = "("
+            DISPLAY "L-Command " WITH NO ADVANCING
+            *> extract label name from string
+            UNSTRING InputDataTable DELIMITED BY "("
+              INTO CharHolder, LabelName
+            END-UNSTRING
+            UNSTRING LabelName DELIMITED BY ")"
+              INTO LabelName, CharHolder
+            END-UNSTRING
+            DISPLAY LabelName WITH NO ADVANCING
+            DISPLAY " at address " RomAddress WITH NO ADVANCING
+            *> convert romaddress to binary
+            MOVE RomAddress TO AnInteger
+            MOVE SPACES TO ABinaryString
+            DISPLAY " Converting " AnInteger " " WITH NO ADVANCING
+            PERFORM VARYING DigitCounter FROM 15 BY -1 
+                    UNTIL DigitCounter = 0
+              MOVE 1 to Expon
+              PERFORM VARYING ExponCounter FROM 0 BY 1
+                      UNTIL ExponCounter = DigitCounter - 1 
+                MULTIPLY Expon BY 2 GIVING Expon
+              END-PERFORM *>ExponCounter
+              DIVIDE Expon INTO AnInteger GIVING ConvDivResult
+              IF ConvDivResult >= 1
+                STRING ABinaryString DELIMITED BY SPACES
+                      "1" DELIMITED BY SIZE
+                       INTO ABinaryString
+                END-STRING
+                SUBTRACT Expon FROM AnInteger GIVING AnInteger
+                ELSE
+                  STRING ABinaryString DELIMITED BY SPACES
+                         "0" DELIMITED BY SIZE
+                         INTO ABinaryString
+                  END-STRING
+              END-IF
+            END-PERFORM *>DigitCounter
+            DISPLAY " to binary " WITH NO ADVANCING
+            DISPLAY ABinaryString
+            *> put label and binary ROM address into userDef table
+            MOVE LabelName to UserDefSym(UserDefCounter)
+            MOVE ABinaryString to UserDefBin(UserDefCounter)
+            ADD 1 TO UserDefCounter
+            ADD 1 TO UserDefSize
+            ELSE 
+              IF FirstChar = "@"
+                ADD 1 TO RomAddress
+                DISPLAY "A-Command - Incrementing ROM Address to " RomAddress
+                ELSE 
+                  ADD 1 TO RomAddress
+                  DISPLAY "C-Command - Incrementing ROM Address to " RomAddress
+              END-IF *>FirstChar @
+          END-IF *>First char (
+      END-IF *>First Char /
+  END-IF *>First Char " "
+  DISPLAY LF
+  READ InputDataFile
+       AT END MOVE HIGH-VALUES TO InputDataTable
+  END-READ
+END-PERFORM *>InputDataFile
+CLOSE InputDataFile
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+*>                          >>>> Second Pass <<<<<
+*>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+DISPLAY LF
+DISPLAY "Second Pass:"
+DISPLAY LF
+MOVE SPACES TO HackLine
+OPEN INPUT InputDataFile
+READ InputDataFile
+     AT END MOVE HIGH-VALUES TO InputDataTable
+END-READ
+PERFORM UNTIL InputDataTable = HIGH-VALUES
+  DISPLAY "Input Data - " WITH NO ADVANCING
+  DISPLAY InputDataTable
+  MOVE InputDataTable(1:1) TO FirstChar 
+  MOVE InputDataTable(2:1) TO SecondChar 
+  DISPLAY FirstChar " - " WITH NO ADVANCING
+*> Ignore comments and white space
+  IF FirstChar = "/" OR FirstChar = " " OR FirstChar = "("
+    DISPLAY "White Space or Comment or Label - no action required"
+    ELSE 
+      IF FirstChar = "@"
+*>>>>>>>A-Command
+        DISPLAY "A-Command " WITH NO ADVANCING
+        UNSTRING InputDataTable DELIMITED BY "@"
+          INTO CharHolder, AddressString
+        END-UNSTRING
+        MOVE ZEROES TO LetterCount
+        INSPECT AddressString TALLYING 
+                LetterCount FOR ALL "a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z" "A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"
+        IF LetterCount = 0 
+*>>>>>>>>>A-Command with numerical address
+          DISPLAY "with numerical address " WITH NO ADVANCING
+*> convert numerical address to a binary String
+          MOVE AddressString TO AnInteger
+          MOVE SPACES TO ABinaryString
+          DISPLAY AnInteger " " WITH NO ADVANCING
+          PERFORM VARYING DigitCounter FROM 15 BY -1 
+                  UNTIL DigitCounter = 0
+            MOVE 1 to Expon
+            PERFORM VARYING ExponCounter FROM 0 BY 1
+                    UNTIL ExponCounter = DigitCounter - 1 
+              MULTIPLY Expon BY 2 GIVING Expon
+            END-PERFORM *>ExponCounter
+            DIVIDE Expon INTO AnInteger GIVING ConvDivResult
+            IF ConvDivResult >= 1
+              STRING ABinaryString DELIMITED BY SPACES
+                     "1" DELIMITED BY SIZE
+                     INTO ABinaryString
+              END-STRING
+              SUBTRACT Expon FROM AnInteger GIVING AnInteger
+              ELSE
+                STRING ABinaryString DELIMITED BY SPACES
+                       "0" DELIMITED BY SIZE
+                       INTO ABinaryString
+                END-STRING
+            END-IF *>ConvDivResult
+          END-PERFORM *>DigitCounter
+          DISPLAY " to binary " WITH NO ADVANCING
+          DISPLAY ABinaryString
+          MOVE ABinaryString TO HackLine
+          DISPLAY "------------------------------Hack = " HackLine
+*> replace with write hackline to output file
+          ELSE 
+*>>>>>>>>>>>A-command with a non-numerical address (LABEL or SYMBOL)
+*>>>>>>>>>>>Check the pre-defined table
+            DISPLAY "with non-numerical reference " WITH NO ADVANCING
+            UNSTRING AddressString DELIMITED BY " "
+              INTO AddressString, CharHolder
+            END-UNSTRING
+            MOVE ZEROES to PreDefCapture
+            PERFORM VARYING PreDefCounter FROM 1 BY 1
+                    UNTIL PreDefCounter = 23 OR PreDefCapture <> 0
+              IF AddressString = PreDefAssembly(PreDefCounter)
+*>>>>>>>>>>>>>>>A-Command in preDefined Table
+                DISPLAY "- Pre-defined Symbol or Label " WITH NO ADVANCING
+                MOVE PreDefCounter to PreDefCapture
+              END-IF *>Pre-defined table possibility
+            END-PERFORM *>PreDefTable
+            IF PreDefCapture <> 0
+              DISPLAY PreDefAssembly(PreDefCapture)
+              MOVE PreDefBinary(PreDefCapture) TO HackLine
+              DISPLAY "------------------------------Hack = " HackLine
+              ELSE
+*>>>>>>>>>>>>>>>Not Pre-defined, check User-Defined Table            
+                MOVE 1 TO UserDefCounter
+                MOVE ZEROES to UserDefCapture
+                PERFORM VARYING UserDefCounter FROM 1 BY 1
+                        UNTIL UserDefCounter = UserDefSize + 1 OR UserDefCapture <> 0
+                  IF AddressString = UserDefSym(UserDefCounter) 
+ *>>>>>>>>>>>>>>>>>>A-Command in Userdefined table
+                    DISPLAY "User-defined Symbol or Label " AddressString
+                    MOVE UserDefCounter TO UserDefCapture
+                  END-IF *>User-defined Symbol possibility
+                END-PERFORM *> UserDefCounter
+                IF UserDefCapture <> 0
+                  MOVE UserDefBin(UserDefCounter) TO HackLine
+                  DISPLAY "------------------------------Hack - " Hackline
+                  ELSE 
+*>>>>>>>>>>>>>>>>>>>Not PreDef or USerDef, A-Command with new user symbol
+*>>>>>>>>>>>>>>>>>>>Add to user def with ram address then ramaddress++
+                    DISPLAY "previously undiscovered.  Adding " AddressString " to UserDef Table" WITH NO ADVANCING
+                    DISPLAY " at address " RamAddress " " WITH NO ADVANCING
+                    *> convert ramaddress to binary
+                    MOVE RamAddress TO AnInteger
+                    MOVE SPACES TO ABinaryString
+                    PERFORM VARYING DigitCounter FROM 15 BY -1 
+                            UNTIL DigitCounter = 0
+                      MOVE 1 to Expon
+                      PERFORM VARYING ExponCounter FROM 0 BY 1
+                              UNTIL ExponCounter = DigitCounter - 1 
+                        MULTIPLY Expon BY 2 GIVING Expon
+                      END-PERFORM *> ExponCounter
+                      DIVIDE Expon INTO AnInteger GIVING ConvDivResult
+                      IF ConvDivResult >= 1
+                        STRING ABinaryString DELIMITED BY SPACES
+                               "1" DELIMITED BY SIZE
+                               INTO ABinaryString
+                        END-STRING
+                        SUBTRACT Expon FROM AnInteger GIVING AnInteger
+                          ELSE
+                            STRING ABinaryString DELIMITED BY SPACES
+                                   "0" DELIMITED BY SIZE
+                                   INTO ABinaryString
+                            END-STRING
+                      END-IF *>ConvDivResult 
+                    END-PERFORM *> DigitCounter
+                    DISPLAY " to binary " WITH NO ADVANCING
+                    DISPLAY ABinaryString
+*> stick label and binary address into user-defined table
+                    MOVE AddressString to UserDefSym(UserDefCounter)
+                    MOVE ABinaryString to UserDefBin(UserDefCounter)
+                    ADD 1 TO UserDefCounter
+                    ADD 1 TO UserDefSize
+                    ADD 1 TO RamAddress
+                    DISPLAY LF
+                END-IF *>UserDefCapture
+            END-IF *>PreDefCapture
+        END-IF *>Non-numerical - letterCount
+        ELSE
+          DISPLAY "C-Command"
+        *>  You still need to build this part
+      END-IF *> IF A Command else C Command 
+  END-IF *>Not White space or comment
+  DISPLAY LF
+  READ InputDataFile
+       AT END MOVE HIGH-VALUES TO InputDataTable
+  END-READ
+END-PERFORM *>InputDataFile
+DISPLAY LF
+CLOSE InputDataFile
+
 *>              MOVE SPACES TO PreDefCompareString
 *>              UNSTRING PreDefAsm DELIMITED BY "+"
 *>                INTO CharHolder, PreDefCompareString
 *>              END-UNSTRING
 *>              IF AddressString = PreDefCompareString
-*>  *>A-Command in preDefined Table
 *>                MOVE PreDefBin to HackLine
 *>                DISPLAY "Pre-defined symbol " AddressString
 *>                DISPLAY "------------------------------Hack = " HackLine
-*>                ELSE
-*>                  MOVE 1 TO UserDefCounter
-*>                  PERFORM VARYING UserDefCounter FROM 1 BY 1
-*>                          UNTIL UserDefCounter = UserDefSize + 1
-*>                    IF AddressString = UserDefSym(UserDefCounter) 
-*>  *>A-Command in Userdefined table
-*>                      DISPLAY "User-defined Symbol or Label " AddressString
-*>                      MOVE UserDefBin(UserDefCounter) to HackLine
-*>                      DISPLAY "------------------------------Hack - " Hackline
-*>                      ELSE 
-*>  *>A-Command with new user symbol
-*>                        *>else add to user def with ram address then ramaddress++
-*>                        DISPLAY "previously undiscovered.  Adding " AddressString " to *>UserDef Table" WITH NO ADVANCING
-*>                        DISPLAY " at address " RamAddress " " WITH NO ADVANCING
-*>                        *> convert ramaddress to binary
-*>                        MOVE RamAddress TO AnInteger
-*>                        MOVE SPACES TO ABinaryString
-*>                        DISPLAY " Converting " AnInteger " " WITH NO ADVANCING
-*>                        PERFORM VARYING DigitCounter FROM 15 BY -1 
-*>                                UNTIL DigitCounter = 0
-*>                          MOVE 1 to Expon
-*>                          PERFORM VARYING ExponCounter FROM 0 BY 1
-*>                                  UNTIL ExponCounter = DigitCounter - 1 
-*>                            MULTIPLY Expon BY 2 GIVING Expon
-*>                          END-PERFORM *> ExponCounter
-*>                          DIVIDE Expon INTO AnInteger GIVING ConvDivResult
-*>                          IF ConvDivResult >= 1
-*>                            STRING ABinaryString DELIMITED BY SPACES
-*>                                   "1" DELIMITED BY SIZE
-*>                                   INTO ABinaryString
-*>                            END-STRING
-*>                            SUBTRACT Expon FROM AnInteger GIVING AnInteger
-*>                              ELSE
-*>                                STRING ABinaryString DELIMITED BY SPACES
-*>                                       "0" DELIMITED BY SIZE
-*>                                       INTO ABinaryString
-*>                                END-STRING
-*>                          END-IF *>ConvDivResult >=1
-*>                        END-PERFORM *> DigitCounter
-*>                        DISPLAY " to binary " WITH NO ADVANCING
-*>                        DISPLAY ABinaryString
-*>*> stick label and binary address into user-defined table
-*>                        MOVE AddressString to UserDefSym(UserDefCounter)
-*>                        MOVE ABinaryString to UserDefBin(UserDefCounter)
-*>                        ADD 1 TO UserDefCounter
-*>                        ADD 1 TO UserDefSize
-*>                        ADD 1 TO RamAddress
-*>                    END-IF *>User-defined Symbol possibility
-*>                  END-PERFORM *> UserDefCounter
-*>              END-IF *>Pre-defined table possibility
-*>              READ PreDefTableFile
-*>                AT END MOVE HIGH-VALUES TO PreDefTable
-*>              END-READ
-*>            END-PERFORM *>PreDefTable
-*>            DISPLAY LF
-*>            CLOSE PreDefTableFile
-*>        END-IF *>Numerical Address possibility
-*>      ELSE
-*>        DISPLAY "C-Command"
-*>        *>  You still need to build this part
-*>      END-IF *>A-Command possibility
-*>  END-IF *>Not White space or comment
-*>  READ InputDataFile
-*>    AT END MOVE HIGH-VALUES TO InputDataTable
-*>  END-READ
-*>END-PERFORM *>InputDataFile
-*>DISPLAY LF
-*>CLOSE InputDataFile
 
 *>>>>>>>>>>>>>>>>>>>> Read UserDefTable
 *>DISPLAY "User Defined Table"
@@ -335,66 +425,7 @@ Begin.
 *>END-PERFORM
 *>DISPLAY LF
 *>
-*> Traverse CompFile and build the comp hash table
-    OPEN INPUT CompTableFile
-    READ CompTableFile
-       AT END MOVE HIGH-VALUES TO CompTable
-    END-READ
-    MOVE ZEROES to CompCounter
-    PERFORM UNTIL CompTable = HIGH-VALUES
-       ADD 1 to CompCounter
-       MOVE CompAsm to CompAssembly(CompCounter)
-       MOVE CompBin to CompBinary(CompCounter)
-       READ CompTableFile
-          AT END MOVE HIGH-VALUES TO CompTable
-       END-READ
-    END-PERFORM
-    CLOSE CompTableFile
-*> Traverse DestFile and build the dest hash table
-    OPEN INPUT DestTableFile
-    READ DestTableFile
-       AT END MOVE HIGH-VALUES TO DestTable
-    END-READ
-    MOVE ZEROES to DestCounter
-    PERFORM UNTIL DestTable = HIGH-VALUES
-       ADD 1 to DestCounter
-       MOVE DestAsm to DestAssembly(DestCounter)
-       MOVE DestBin to DestBinary(DestCounter)
-       READ DestTableFile
-          AT END MOVE HIGH-VALUES TO DestTable
-       END-READ
-    END-PERFORM
-    CLOSE DestTableFile
-*> Traverse JumpFile and build the jump hash table
-    OPEN INPUT JumpTableFile
-    READ JumpTableFile
-       AT END MOVE HIGH-VALUES TO JumpTable
-    END-READ
-    MOVE ZEROES to JumpCounter
-    PERFORM UNTIL JumpTable = HIGH-VALUES
-       ADD 1 to JumpCounter
-       MOVE JumpAsm to JumpAssembly(JumpCounter)
-       MOVE JumpBin to JumpBinary(JumpCounter)
-       READ JumpTableFile
-          AT END MOVE HIGH-VALUES TO JumpTable
-       END-READ
-    END-PERFORM
-    CLOSE JumpTableFile
-*> Traverse PreDefFile and build the pre-def hash table
-    OPEN INPUT PreDefTableFile
-    READ PreDefTableFile
-       AT END MOVE HIGH-VALUES TO PreDefTable
-    END-READ
-    MOVE ZEROES to PreDefCounter
-    PERFORM UNTIL PreDefTable = HIGH-VALUES
-       ADD 1 to PreDefCounter
-       MOVE PreDefAsm to PreDefAssembly(PreDefCounter)
-       MOVE PreDefBin to PreDefBinary(PreDefCounter)
-       READ PreDefTableFile
-          AT END MOVE HIGH-VALUES TO PreDefTable
-       END-READ
-    END-PERFORM
-    CLOSE PreDefTableFile
+
 *>>>>>>>>>>>>>>>>>>>> convert a numer to a binary String
 *>DISPLAY AnInteger WITH NO ADVANCING
 *>PERFORM VARYING DigitCounter FROM 15 BY -1 
