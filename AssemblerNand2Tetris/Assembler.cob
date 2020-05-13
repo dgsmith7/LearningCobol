@@ -64,14 +64,17 @@ WORKING-STORAGE SECTION.
     02 CompBinary OCCURS 28 TIMES PIC X(7).
     02 CompAssembly OCCURS 28 TIMES PIC XXX.
 01  CompCounter PIC 999 VALUE 001.
+01  TempComp PIC XXX VALUE SPACES.
 01  DestHash.
     02 DestBinary OCCURS 8 TIMES PIC XXX.
     02 DestAssembly OCCURS 8 TIMES PIC XXXX.
 01  DestCounter PIC 999 VALUE 001.
+01  TempDest PIC XXXX VALUE SPACES.
 01  JumpHash.
     02 JumpBinary OCCURS 8 TIMES PIC XXX.
     02 JumpAssembly OCCURS 8 TIMES PIC XXXX.
 01  JumpCounter PIC 999 VALUE 001.
+01  TempJump PIC XXXX VALUE SPACES.
 01  PreDefHash.
     02 PreDefBinary OCCURS 23 TIMES PIC X(16).
     02 PreDefAssembly OCCURS 23 TIMES PIC X(40).
@@ -336,6 +339,7 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
               DISPLAY PreDefAssembly(PreDefCapture)
               MOVE PreDefBinary(PreDefCapture) TO HackLine
               DISPLAY "------------------------------Hack = " HackLine
+*> replace with write hackline to output file
               ELSE
 *>>>>>>>>>>>>>>>Not Pre-defined, check User-Defined Table            
                 MOVE 1 TO UserDefCounter
@@ -351,6 +355,7 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
                 IF UserDefCapture <> 0
                   MOVE UserDefBin(UserDefCounter) TO HackLine
                   DISPLAY "------------------------------Hack - " Hackline
+*> replace with write hackline to output file
                   ELSE 
 *>>>>>>>>>>>>>>>>>>>Not PreDef or USerDef, A-Command with new user symbol
 *>>>>>>>>>>>>>>>>>>>Add to user def with ram address then ramaddress++
@@ -394,7 +399,45 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
         END-IF *>Non-numerical - letterCount
         ELSE
           DISPLAY "C-Command"
-        *>  You still need to build this part
+          *>  You still need to build this part
+          *>Set temp string to SPACES
+          MOVE ZEROES TO LetterCount
+          INSPECT InputDataTable TALLYING LetterCount FOR ALL "="
+          IF LetterCount > 0 
+          *> if it contains "=" it a comp dest no jump
+
+            UNSTRING InputDataTable DELIMITED BY "="
+              INTO TempComp, TempDest
+            END-UNSTRING
+            PERFORM VARYING DestCounter FROM 1 BY 1
+                    UNTIL DestCounter = 8
+              DISPLAY TempDest
+              DISPLAY DestAssembly(DestCounter)
+              IF TempDest = DestAssembly(DestCounter)
+                MOVE DestBinary(DestCounter) to TempDest
+              END-IF *>Dest table possibility
+            END-PERFORM *>DestTable
+
+            DISPLAY "Not a Jump Command"
+            DISPLAY TempComp
+            DISPLAY TempDest
+            *>Temp String is LOOKUPCOMP + LOOKUPDEST + "000"
+            ELSE *> if it contains ";"
+              MOVE ZEROES TO LetterCount
+              INSPECT InputDataTable TALLYING LetterCount FOR ALL ";"
+              IF LetterCount > 0 
+                *> if it contains ";" it a comp no dest jump
+                UNSTRING InputDataTable DELIMITED BY ";"
+                  INTO TempComp, TempJump
+                END-UNSTRING
+                DISPLAY "Jump Command"
+                DISPLAY TempComp
+                DISPLAY TempJump
+                *>Temp String is LOOKUPCOMP + 000 + LOOKUPJUMP
+              END-IF
+          END-IF *>LetterCount for NonJump
+        *>hackline is "111" + Temp String
+        *>write it to the file
       END-IF *> IF A Command else C Command 
   END-IF *>Not White space or comment
   DISPLAY LF
@@ -403,54 +446,16 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
   END-READ
 END-PERFORM *>InputDataFile
 DISPLAY LF
+DISPLAY AddressString
 CLOSE InputDataFile
 
-*>              MOVE SPACES TO PreDefCompareString
-*>              UNSTRING PreDefAsm DELIMITED BY "+"
-*>                INTO CharHolder, PreDefCompareString
-*>              END-UNSTRING
-*>              IF AddressString = PreDefCompareString
-*>                MOVE PreDefBin to HackLine
-*>                DISPLAY "Pre-defined symbol " AddressString
-*>                DISPLAY "------------------------------Hack = " HackLine
 
-*>>>>>>>>>>>>>>>>>>>> Read UserDefTable
-*>DISPLAY "User Defined Table"
-*>MOVE 1 TO UserDefCounter
-*>PERFORM VARYING UserDefCounter FROM 1 BY 1
-*>UNTIL UserDefCounter = UserDefSize + 1
-*>  DISPLAY UserDefSym(UserDefCounter) WITH NO ADVANCING
-*>  DISPLAY " - " WITH NO ADVANCING 
-*>  DISPLAY UserDefBin(UserDefCounter)
-*>END-PERFORM
-*>DISPLAY LF
-*>
 
-*>>>>>>>>>>>>>>>>>>>> convert a numer to a binary String
-*>DISPLAY AnInteger WITH NO ADVANCING
-*>PERFORM VARYING DigitCounter FROM 15 BY -1 
-*>        UNTIL DigitCounter = 0
-*>  MOVE 1 to Expon
-*>  PERFORM VARYING ExponCounter FROM 0 BY 1
-*>        UNTIL ExponCounter = DigitCounter 
-*>    MULTIPLY Expon BY 2 GIVING Expon
-*>  END-PERFORM
-*>  DIVIDE Expon INTO AnInteger GIVING ConvDivResult
-*>  IF ConvDivResult >= 1
 *>    STRING ABinaryString DELIMITED BY SPACES
 *>           "1" DELIMITED BY SIZE
 *>      INTO ABinaryString
 *>    END-STRING
-*>    SUBTRACT Expon FROM AnInteger GIVING AnInteger
-*>   ELSE
-*>     STRING ABinaryString DELIMITED BY SPACES
-*>            "0" DELIMITED BY SIZE
-*>       INTO ABinaryString
-*>     END-STRING
-*>  END-IF
-*>END-PERFORM
-*>DISPLAY " equals " WITH NO ADVANCING
-*>DISPLAY ABinaryString
+
 *>>>>>>>>>>>>>>>>>>>> create and write the output file
 *>    OPEN OUTPUT OutputFile
 *>    MOVE "1111101011100001" TO HackCode
@@ -471,4 +476,18 @@ CLOSE InputDataFile
 *>    END-PERFORM
 *>    DISPLAY LF
 *>    CLOSE OutputFile
+*>>>>>>>>>>>>>>>>>>>>> Look up stuff in a hash table
+*>            MOVE ZEROES to PreDefCapture
+*>            PERFORM VARYING PreDefCounter FROM 1 BY 1
+*>                    UNTIL PreDefCounter = 23 OR PreDefCapture <> 0
+*>              IF AddressString = PreDefAssembly(PreDefCounter)
+*>                DISPLAY "- Pre-defined Symbol or Label " WITH NO ADVANCING
+*>                MOVE PreDefCounter to PreDefCapture
+*>              END-IF *>Pre-defined table possibility
+*>            END-PERFORM *>PreDefTable
+*>            IF PreDefCapture <> 0
+*>              DISPLAY PreDefAssembly(PreDefCapture)
+*>              MOVE PreDefBinary(PreDefCapture) TO HackLine
+*>              DISPLAY "------------------------------Hack = " HackLine
+*>            END-IF
     STOP RUN.

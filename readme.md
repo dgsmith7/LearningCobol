@@ -11,3 +11,8 @@ The book:  Beginning COBOL for Programmers by Michael Coughlan
 http://1.droppdf.com/files/LTFDy/apress-beginning-cobol-for-programmers-2014.pdf
 GnuCOBOL Guide
 https://open-cobol.sourceforge.io
+
+To-do:
+Second-pass C-Commands
+Write output file
+Set up User-input filename or command-line parameter filename
