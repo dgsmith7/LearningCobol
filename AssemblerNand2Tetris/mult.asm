@@ -2,9 +2,6 @@
 
 
 @R2       // clear r2
-@2879
-@YOMAMA
-(AFUCKINGLABEL)
 M=0
 (LOOP)    
 @R0      // set d = to the contents of r0 which is
