@@ -24,15 +24,15 @@ FILE SECTION.
 FD CompTableFile.
 01 CompTable.
 	02 CompBin PIC X(7).
-	02 CompAsm PIC XXX.
+	02 CompAsm PIC XXXX.
 FD DestTableFile.
 01 DestTable.
     02 DestBin PIC XXX.
-    02 DestAsm PIC XXXX.
+    02 DestAsm PIC X(5).
 FD JumpTableFile.
 01 JumpTable.
     02 JumpBin PIC XXX.
-    02 JumpAsm PIC XXXX.
+    02 JumpAsm PIC X(5).
 FD PreDefTableFile.
 01 PreDefTable.
     02 PreDefBin PIC X(16).
@@ -62,17 +62,17 @@ WORKING-STORAGE SECTION.
 01  UserDefCapture PIC 99.
 01  CompHash.
     02 CompBinary OCCURS 28 TIMES PIC X(7).
-    02 CompAssembly OCCURS 28 TIMES PIC XXX.
+    02 CompAssembly OCCURS 28 TIMES PIC XXXX.
 01  CompCounter PIC 999 VALUE 001.
 01  TempComp PIC XXX VALUE SPACES.
 01  DestHash.
     02 DestBinary OCCURS 8 TIMES PIC XXX.
-    02 DestAssembly OCCURS 8 TIMES PIC XXXX.
+    02 DestAssembly OCCURS 8 TIMES PIC X(5).
 01  DestCounter PIC 999 VALUE 001.
 01  TempDest PIC XXXX VALUE SPACES.
 01  JumpHash.
     02 JumpBinary OCCURS 8 TIMES PIC XXX.
-    02 JumpAssembly OCCURS 8 TIMES PIC XXXX.
+    02 JumpAssembly OCCURS 8 TIMES PIC X(5).
 01  JumpCounter PIC 999 VALUE 001.
 01  TempJump PIC XXXX VALUE SPACES.
 01  PreDefHash.
@@ -115,6 +115,9 @@ MOVE ZEROES to CompCounter
 PERFORM UNTIL CompTable = HIGH-VALUES
    ADD 1 to CompCounter
    MOVE CompAsm to CompAssembly(CompCounter)
+   UNSTRING CompAssembly(CompCounter) DELIMITED BY "+"
+     INTO CharHolder, CompAssembly(CompCounter)
+   END-UNSTRING
    MOVE CompBin to CompBinary(CompCounter)
    READ CompTableFile
       AT END MOVE HIGH-VALUES TO CompTable
@@ -132,6 +135,9 @@ MOVE ZEROES to DestCounter
 PERFORM UNTIL DestTable = HIGH-VALUES
    ADD 1 to DestCounter
    MOVE DestAsm to DestAssembly(DestCounter)
+   UNSTRING DestAssembly(DestCounter) DELIMITED BY "+"
+     INTO CharHolder, DestAssembly(DestCounter)
+   END-UNSTRING
    MOVE DestBin to DestBinary(DestCounter)
    READ DestTableFile
       AT END MOVE HIGH-VALUES TO DestTable
@@ -149,6 +155,9 @@ MOVE ZEROES to JumpCounter
 PERFORM UNTIL JumpTable = HIGH-VALUES
    ADD 1 to JumpCounter
    MOVE JumpAsm to JumpAssembly(JumpCounter)
+   UNSTRING JumpAssembly(JumpCounter) DELIMITED BY "+"
+     INTO CharHolder, JumpAssembly(JumpCounter)
+   END-UNSTRING
    MOVE JumpBin to JumpBinary(JumpCounter)
    READ JumpTableFile
       AT END MOVE HIGH-VALUES TO JumpTable
@@ -169,6 +178,9 @@ PERFORM UNTIL PreDefTable = HIGH-VALUES
      INTO CharHolder, PreDefAsm
    END-UNSTRING
    MOVE PreDefAsm to PreDefAssembly(PreDefCounter)
+   UNSTRING PreDefAssembly(PreDefCounter) DELIMITED BY "+"
+     INTO CharHolder, PreDefAssembly(PreDefCounter)
+   END-UNSTRING
    MOVE PreDefBin to PreDefBinary(PreDefCounter)
    READ PreDefTableFile
       AT END MOVE HIGH-VALUES TO PreDefTable
@@ -354,6 +366,10 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
                 END-PERFORM *> UserDefCounter
                 IF UserDefCapture <> 0
                   MOVE UserDefBin(UserDefCounter) TO HackLine
+                  STRING "0" DELIMITED BY SIZE
+                         HackLine DELIMITED BY SPACES
+                         INTO HackLine
+                  END-STRING
                   DISPLAY "------------------------------Hack - " Hackline
 *> replace with write hackline to output file
                   ELSE 
@@ -405,23 +421,35 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
           INSPECT InputDataTable TALLYING LetterCount FOR ALL "="
           IF LetterCount > 0 
           *> if it contains "=" it a comp dest no jump
-
             UNSTRING InputDataTable DELIMITED BY "="
               INTO TempComp, TempDest
             END-UNSTRING
+            PERFORM VARYING CompCounter FROM 1 BY 1
+                    UNTIL CompCounter = 9
+              DISPLAY TempComp
+              DISPLAY CompAssembly(CompCounter)
+              IF TempComp = CompAssembly(CompCounter)
+                MOVE CompBinary(CompCounter) to TempComp
+              END-IF *>Comp table possibility
+            END-PERFORM *>CompTable
             PERFORM VARYING DestCounter FROM 1 BY 1
-                    UNTIL DestCounter = 8
+                    UNTIL DestCounter = 9
               DISPLAY TempDest
               DISPLAY DestAssembly(DestCounter)
               IF TempDest = DestAssembly(DestCounter)
                 MOVE DestBinary(DestCounter) to TempDest
               END-IF *>Dest table possibility
             END-PERFORM *>DestTable
-
             DISPLAY "Not a Jump Command"
-            DISPLAY TempComp
-            DISPLAY TempDest
+            DISPLAY "COMP ->" TempComp
+            DISPLAY "DEST ->" TempDest
             *>Temp String is LOOKUPCOMP + LOOKUPDEST + "000"
+            STRING "111" DELIMITED BY SIZE
+                   TempComp DELIMITED BY SPACES
+                   TempDest DELIMITED BY SPACES
+                   "000" DELIMITED BY SIZE
+                   INTO HackLine
+            END-STRING
             ELSE *> if it contains ";"
               MOVE ZEROES TO LetterCount
               INSPECT InputDataTable TALLYING LetterCount FOR ALL ";"
@@ -430,14 +458,38 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
                 UNSTRING InputDataTable DELIMITED BY ";"
                   INTO TempComp, TempJump
                 END-UNSTRING
+                DISPLAY TempComp "-" TempJump
+                PERFORM VARYING CompCounter FROM 1 BY 1
+                        UNTIL CompCounter = 9
+                  DISPLAY TempComp
+                  DISPLAY CompAssembly(CompCounter)
+                  IF TempComp = CompAssembly(CompCounter)
+                    MOVE CompBinary(CompCounter) to TempComp
+                  END-IF *>Comp table possibility
+                END-PERFORM *>CompTable
+                PERFORM VARYING JumpCounter FROM 1 BY 1
+                        UNTIL JumpCounter = 9
+                  DISPLAY TempJump WITH NO ADVANCING
+                  DISPLAY " vs " JumpAssembly(JumpCounter)
+                  IF TempJump = JumpAssembly(JumpCounter)
+                    MOVE JumpBinary(JumpCounter) to TempJump
+                  END-IF *>Jump table possibility
+                END-PERFORM *>JumpTable
                 DISPLAY "Jump Command"
-                DISPLAY TempComp
-                DISPLAY TempJump
+                DISPLAY "COMP ->" TempComp
+                DISPLAY "JUMP ->" TempJump
                 *>Temp String is LOOKUPCOMP + 000 + LOOKUPJUMP
               END-IF
+              STRING "111" DELIMITED BY SIZE
+                     TempComp DELIMITED BY SPACES
+                     "000" DELIMITED BY SIZE
+                     TempJump DELIMITED BY SPACES
+                     INTO HackLine
+              END-STRING
           END-IF *>LetterCount for NonJump
-        *>hackline is "111" + Temp String
-        *>write it to the file
+          *>hackline is "111" + Temp String
+          *>write it to the file
+          DISPLAY "------------------------------Hack - " Hackline
       END-IF *> IF A Command else C Command 
   END-IF *>Not White space or comment
   DISPLAY LF
