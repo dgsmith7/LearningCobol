@@ -24,7 +24,7 @@ FILE SECTION.
 FD CompTableFile.
 01 CompTable.
 	02 CompBin PIC X(7).
-	02 CompAsm PIC XXXX.
+	02 CompAsm PIC X(4).
 FD DestTableFile.
 01 DestTable.
     02 DestBin PIC XXX.
@@ -62,11 +62,11 @@ WORKING-STORAGE SECTION.
 01  UserDefCapture PIC 99.
 01  CompHash.
     02 CompBinary OCCURS 28 TIMES PIC X(7).
-    02 CompAssembly OCCURS 28 TIMES PIC XXXX.
+    02 CompAssembly OCCURS 28 TIMES PIC X(4).
 01  CompCounter PIC 999 VALUE 001.
-01  TempComp PIC XXX VALUE SPACES.
+01  TempComp PIC X(7) VALUE SPACES.
 01  DestHash.
-    02 DestBinary OCCURS 8 TIMES PIC XXX.
+    02 DestBinary OCCURS 8 TIMES PIC X(4).
     02 DestAssembly OCCURS 8 TIMES PIC X(5).
 01  DestCounter PIC 999 VALUE 001.
 01  TempDest PIC XXXX VALUE SPACES.
@@ -115,7 +115,7 @@ MOVE ZEROES to CompCounter
 PERFORM UNTIL CompTable = HIGH-VALUES
    ADD 1 to CompCounter
    MOVE CompAsm to CompAssembly(CompCounter)
-   UNSTRING CompAssembly(CompCounter) DELIMITED BY "+"
+   UNSTRING CompAssembly(CompCounter) DELIMITED BY ","
      INTO CharHolder, CompAssembly(CompCounter)
    END-UNSTRING
    MOVE CompBin to CompBinary(CompCounter)
@@ -135,11 +135,11 @@ MOVE ZEROES to DestCounter
 PERFORM UNTIL DestTable = HIGH-VALUES
    ADD 1 to DestCounter
    MOVE DestAsm to DestAssembly(DestCounter)
-   UNSTRING DestAssembly(DestCounter) DELIMITED BY "+"
+   UNSTRING DestAssembly(DestCounter) DELIMITED BY ","
      INTO CharHolder, DestAssembly(DestCounter)
    END-UNSTRING
    MOVE DestBin to DestBinary(DestCounter)
-   READ DestTableFile
+  READ DestTableFile
       AT END MOVE HIGH-VALUES TO DestTable
    END-READ
 END-PERFORM
@@ -155,7 +155,7 @@ MOVE ZEROES to JumpCounter
 PERFORM UNTIL JumpTable = HIGH-VALUES
    ADD 1 to JumpCounter
    MOVE JumpAsm to JumpAssembly(JumpCounter)
-   UNSTRING JumpAssembly(JumpCounter) DELIMITED BY "+"
+   UNSTRING JumpAssembly(JumpCounter) DELIMITED BY ","
      INTO CharHolder, JumpAssembly(JumpCounter)
    END-UNSTRING
    MOVE JumpBin to JumpBinary(JumpCounter)
@@ -174,11 +174,11 @@ END-READ
 MOVE ZEROES to PreDefCounter
 PERFORM UNTIL PreDefTable = HIGH-VALUES
    ADD 1 to PreDefCounter
-   UNSTRING PreDefAsm DELIMITED BY "+"
+   UNSTRING PreDefAsm DELIMITED BY ","
      INTO CharHolder, PreDefAsm
    END-UNSTRING
    MOVE PreDefAsm to PreDefAssembly(PreDefCounter)
-   UNSTRING PreDefAssembly(PreDefCounter) DELIMITED BY "+"
+   UNSTRING PreDefAssembly(PreDefCounter) DELIMITED BY ","
      INTO CharHolder, PreDefAssembly(PreDefCounter)
    END-UNSTRING
    MOVE PreDefBin to PreDefBinary(PreDefCounter)
@@ -187,42 +187,37 @@ PERFORM UNTIL PreDefTable = HIGH-VALUES
    END-READ
 END-PERFORM
 CLOSE PreDefTableFile
+
+
 *>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 *>                           >>>> First Pass <<<<<
 *>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-DISPLAY LF
-DISPLAY "First Pass:"
-DISPLAY LF
 *>>>>>>>>>>>>>>>>>>>> Traverse and read the input data file
 OPEN INPUT InputDataFile
 READ InputDataFile
   AT END MOVE HIGH-VALUES TO InputDataTable
 END-READ
 PERFORM UNTIL InputDataTable = HIGH-VALUES
-  DISPLAY InputDataTable
   MOVE InputDataTable(1:1) TO FirstChar 
   MOVE InputDataTable(2:1) TO SecondChar 
   IF FirstChar = " "
-    DISPLAY "White Space - No action required"
+*>>>Whitespace
     ELSE 
       IF FirstChar = "/"
-        DISPLAY "Comment - No action required"
+*>>>>>>>Comment
         ELSE 
+*>>>>>>>>>Its a Label
           IF FirstChar = "("
-            DISPLAY "L-Command " WITH NO ADVANCING
-            *> extract label name from string
+*>>>>>>>>>>>extract label name from string
             UNSTRING InputDataTable DELIMITED BY "("
               INTO CharHolder, LabelName
             END-UNSTRING
             UNSTRING LabelName DELIMITED BY ")"
               INTO LabelName, CharHolder
             END-UNSTRING
-            DISPLAY LabelName WITH NO ADVANCING
-            DISPLAY " at address " RomAddress WITH NO ADVANCING
-            *> convert romaddress to binary
+*>>>>>>>>>>>convert romaddress to binary
             MOVE RomAddress TO AnInteger
             MOVE SPACES TO ABinaryString
-            DISPLAY " Converting " AnInteger " " WITH NO ADVANCING
             PERFORM VARYING DigitCounter FROM 15 BY -1 
                     UNTIL DigitCounter = 0
               MOVE 1 to Expon
@@ -244,25 +239,22 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
                   END-STRING
               END-IF
             END-PERFORM *>DigitCounter
-            DISPLAY " to binary " WITH NO ADVANCING
-            DISPLAY ABinaryString
-            *> put label and binary ROM address into userDef table
+*>>>>>>>>>>>put label and binary ROM address into userDef table
             MOVE LabelName to UserDefSym(UserDefCounter)
             MOVE ABinaryString to UserDefBin(UserDefCounter)
             ADD 1 TO UserDefCounter
             ADD 1 TO UserDefSize
             ELSE 
               IF FirstChar = "@"
+*>>>>>>>>>>>>>>>A-Command, increase ROM Address by 1
                 ADD 1 TO RomAddress
-                DISPLAY "A-Command - Incrementing ROM Address to " RomAddress
                 ELSE 
+*>>>>>>>>>>>>>>>C-Command, increase ROM Address by 1
                   ADD 1 TO RomAddress
-                  DISPLAY "C-Command - Incrementing ROM Address to " RomAddress
               END-IF *>FirstChar @
           END-IF *>First char (
       END-IF *>First Char /
   END-IF *>First Char " "
-  DISPLAY LF
   READ InputDataFile
        AT END MOVE HIGH-VALUES TO InputDataTable
   END-READ
@@ -271,40 +263,33 @@ CLOSE InputDataFile
 *>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 *>                          >>>> Second Pass <<<<<
 *>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-DISPLAY LF
-DISPLAY "Second Pass:"
-DISPLAY LF
 MOVE SPACES TO HackLine
 OPEN INPUT InputDataFile
+OPEN OUTPUT OutputFile
+DISPLAY "Writing Hack Code to output file."
 READ InputDataFile
      AT END MOVE HIGH-VALUES TO InputDataTable
 END-READ
 PERFORM UNTIL InputDataTable = HIGH-VALUES
-  DISPLAY "Input Data - " WITH NO ADVANCING
-  DISPLAY InputDataTable
   MOVE InputDataTable(1:1) TO FirstChar 
   MOVE InputDataTable(2:1) TO SecondChar 
-  DISPLAY FirstChar " - " WITH NO ADVANCING
-*> Ignore comments and white space
+*>Ignore comments and white space
   IF FirstChar = "/" OR FirstChar = " " OR FirstChar = "("
-    DISPLAY "White Space or Comment or Label - no action required"
     ELSE 
       IF FirstChar = "@"
 *>>>>>>>A-Command
-        DISPLAY "A-Command " WITH NO ADVANCING
         UNSTRING InputDataTable DELIMITED BY "@"
           INTO CharHolder, AddressString
         END-UNSTRING
+*>>>>>>>Check to see if address is numeric
         MOVE ZEROES TO LetterCount
         INSPECT AddressString TALLYING 
                 LetterCount FOR ALL "a" "b" "c" "d" "e" "f" "g" "h" "i" "j" "k" "l" "m" "n" "o" "p" "q" "r" "s" "t" "u" "v" "w" "x" "y" "z" "A" "B" "C" "D" "E" "F" "G" "H" "I" "J" "K" "L" "M" "N" "O" "P" "Q" "R" "S" "T" "U" "V" "W" "X" "Y" "Z"
         IF LetterCount = 0 
 *>>>>>>>>>A-Command with numerical address
-          DISPLAY "with numerical address " WITH NO ADVANCING
-*> convert numerical address to a binary String
+*>>>>>>>>>Convert numerical address to a binary String
           MOVE AddressString TO AnInteger
           MOVE SPACES TO ABinaryString
-          DISPLAY AnInteger " " WITH NO ADVANCING
           PERFORM VARYING DigitCounter FROM 15 BY -1 
                   UNTIL DigitCounter = 0
             MOVE 1 to Expon
@@ -326,15 +311,13 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
                 END-STRING
             END-IF *>ConvDivResult
           END-PERFORM *>DigitCounter
-          DISPLAY " to binary " WITH NO ADVANCING
-          DISPLAY ABinaryString
           MOVE ABinaryString TO HackLine
-          DISPLAY "------------------------------Hack = " HackLine
-*> replace with write hackline to output file
+          DISPLAY HackLine
+          MOVE HackLine to HackCode
+          WRITE Hackcode
           ELSE 
 *>>>>>>>>>>>A-command with a non-numerical address (LABEL or SYMBOL)
 *>>>>>>>>>>>Check the pre-defined table
-            DISPLAY "with non-numerical reference " WITH NO ADVANCING
             UNSTRING AddressString DELIMITED BY " "
               INTO AddressString, CharHolder
             END-UNSTRING
@@ -343,15 +326,14 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
                     UNTIL PreDefCounter = 23 OR PreDefCapture <> 0
               IF AddressString = PreDefAssembly(PreDefCounter)
 *>>>>>>>>>>>>>>>A-Command in preDefined Table
-                DISPLAY "- Pre-defined Symbol or Label " WITH NO ADVANCING
                 MOVE PreDefCounter to PreDefCapture
               END-IF *>Pre-defined table possibility
             END-PERFORM *>PreDefTable
             IF PreDefCapture <> 0
-              DISPLAY PreDefAssembly(PreDefCapture)
               MOVE PreDefBinary(PreDefCapture) TO HackLine
-              DISPLAY "------------------------------Hack = " HackLine
-*> replace with write hackline to output file
+              DISPLAY HackLine
+              MOVE HackLine to HackCode
+              WRITE Hackcode
               ELSE
 *>>>>>>>>>>>>>>>Not Pre-defined, check User-Defined Table            
                 MOVE 1 TO UserDefCounter
@@ -359,25 +341,23 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
                 PERFORM VARYING UserDefCounter FROM 1 BY 1
                         UNTIL UserDefCounter = UserDefSize + 1 OR UserDefCapture <> 0
                   IF AddressString = UserDefSym(UserDefCounter) 
- *>>>>>>>>>>>>>>>>>>A-Command in Userdefined table
-                    DISPLAY "User-defined Symbol or Label " AddressString
+ *>>>>>>>>>>>>>>>>>>A-Command with address in Userdefined table
                     MOVE UserDefCounter TO UserDefCapture
                   END-IF *>User-defined Symbol possibility
                 END-PERFORM *> UserDefCounter
-                IF UserDefCapture <> 0
+                IF UserDefCapture > 0
                   MOVE UserDefBin(UserDefCounter) TO HackLine
                   STRING "0" DELIMITED BY SIZE
-                         HackLine DELIMITED BY SPACES
+                         UserDefBin(UserDefCapture) DELIMITED BY SPACES
                          INTO HackLine
                   END-STRING
-                  DISPLAY "------------------------------Hack - " Hackline
-*> replace with write hackline to output file
+                  DISPLAY Hackline
+                  MOVE HackLine to HackCode
+                  WRITE Hackcode
                   ELSE 
-*>>>>>>>>>>>>>>>>>>>Not PreDef or USerDef, A-Command with new user symbol
-*>>>>>>>>>>>>>>>>>>>Add to user def with ram address then ramaddress++
-                    DISPLAY "previously undiscovered.  Adding " AddressString " to UserDef Table" WITH NO ADVANCING
-                    DISPLAY " at address " RamAddress " " WITH NO ADVANCING
-                    *> convert ramaddress to binary
+*>>>>>>>>>>>>>>>>>>>Not PreDef or UserDef, A-Command with new user symbol
+*>>>>>>>>>>>>>>>>>>>Add to user def with ram address then increase ram address
+*>>>>>>>>>>>>>>>>>>>Convert ramaddress to binary
                     MOVE RamAddress TO AnInteger
                     MOVE SPACES TO ABinaryString
                     PERFORM VARYING DigitCounter FROM 15 BY -1 
@@ -401,49 +381,37 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
                             END-STRING
                       END-IF *>ConvDivResult 
                     END-PERFORM *> DigitCounter
-                    DISPLAY " to binary " WITH NO ADVANCING
-                    DISPLAY ABinaryString
-*> stick label and binary address into user-defined table
+*>>>>>>>>>>>>>>>>>>>Stick label and binary address into user-defined table
                     MOVE AddressString to UserDefSym(UserDefCounter)
                     MOVE ABinaryString to UserDefBin(UserDefCounter)
                     ADD 1 TO UserDefCounter
                     ADD 1 TO UserDefSize
                     ADD 1 TO RamAddress
-                    DISPLAY LF
                 END-IF *>UserDefCapture
             END-IF *>PreDefCapture
         END-IF *>Non-numerical - letterCount
         ELSE
-          DISPLAY "C-Command"
-          *>  You still need to build this part
-          *>Set temp string to SPACES
+*>>>>>>>>>C-Command  
           MOVE ZEROES TO LetterCount
           INSPECT InputDataTable TALLYING LetterCount FOR ALL "="
           IF LetterCount > 0 
-          *> if it contains "=" it a comp dest no jump
+*>>>>>>>>>>>If it contains "=" it a comp, dest, no jump
             UNSTRING InputDataTable DELIMITED BY "="
-              INTO TempComp, TempDest
+              INTO TempDest, TempComp
             END-UNSTRING
             PERFORM VARYING CompCounter FROM 1 BY 1
-                    UNTIL CompCounter = 9
-              DISPLAY TempComp
-              DISPLAY CompAssembly(CompCounter)
+                    UNTIL CompCounter = 29
               IF TempComp = CompAssembly(CompCounter)
                 MOVE CompBinary(CompCounter) to TempComp
               END-IF *>Comp table possibility
             END-PERFORM *>CompTable
             PERFORM VARYING DestCounter FROM 1 BY 1
                     UNTIL DestCounter = 9
-              DISPLAY TempDest
-              DISPLAY DestAssembly(DestCounter)
               IF TempDest = DestAssembly(DestCounter)
                 MOVE DestBinary(DestCounter) to TempDest
               END-IF *>Dest table possibility
             END-PERFORM *>DestTable
-            DISPLAY "Not a Jump Command"
-            DISPLAY "COMP ->" TempComp
-            DISPLAY "DEST ->" TempDest
-            *>Temp String is LOOKUPCOMP + LOOKUPDEST + "000"
+*>>>>>>>>>>>Combine lookups into one binary string
             STRING "111" DELIMITED BY SIZE
                    TempComp DELIMITED BY SPACES
                    TempDest DELIMITED BY SPACES
@@ -454,32 +422,24 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
               MOVE ZEROES TO LetterCount
               INSPECT InputDataTable TALLYING LetterCount FOR ALL ";"
               IF LetterCount > 0 
-                *> if it contains ";" it a comp no dest jump
+*>>>>>>>>>>>>>>>If it contains ";" its a comp, no dest, jump
                 UNSTRING InputDataTable DELIMITED BY ";"
                   INTO TempComp, TempJump
                 END-UNSTRING
-                DISPLAY TempComp "-" TempJump
                 PERFORM VARYING CompCounter FROM 1 BY 1
-                        UNTIL CompCounter = 9
-                  DISPLAY TempComp
-                  DISPLAY CompAssembly(CompCounter)
+                        UNTIL CompCounter = 29
                   IF TempComp = CompAssembly(CompCounter)
                     MOVE CompBinary(CompCounter) to TempComp
                   END-IF *>Comp table possibility
                 END-PERFORM *>CompTable
                 PERFORM VARYING JumpCounter FROM 1 BY 1
                         UNTIL JumpCounter = 9
-                  DISPLAY TempJump WITH NO ADVANCING
-                  DISPLAY " vs " JumpAssembly(JumpCounter)
                   IF TempJump = JumpAssembly(JumpCounter)
                     MOVE JumpBinary(JumpCounter) to TempJump
                   END-IF *>Jump table possibility
                 END-PERFORM *>JumpTable
-                DISPLAY "Jump Command"
-                DISPLAY "COMP ->" TempComp
-                DISPLAY "JUMP ->" TempJump
-                *>Temp String is LOOKUPCOMP + 000 + LOOKUPJUMP
               END-IF
+*>>>>>>>>>>>>>Combine lookups into one binary string
               STRING "111" DELIMITED BY SIZE
                      TempComp DELIMITED BY SPACES
                      "000" DELIMITED BY SIZE
@@ -487,59 +447,16 @@ PERFORM UNTIL InputDataTable = HIGH-VALUES
                      INTO HackLine
               END-STRING
           END-IF *>LetterCount for NonJump
-          *>hackline is "111" + Temp String
-          *>write it to the file
-          DISPLAY "------------------------------Hack - " Hackline
+          DISPLAY Hackline
+          MOVE HackLine to HackCode
+          WRITE Hackcode
       END-IF *> IF A Command else C Command 
   END-IF *>Not White space or comment
-  DISPLAY LF
   READ InputDataFile
        AT END MOVE HIGH-VALUES TO InputDataTable
   END-READ
 END-PERFORM *>InputDataFile
-DISPLAY LF
-DISPLAY AddressString
 CLOSE InputDataFile
-
-
-
-*>    STRING ABinaryString DELIMITED BY SPACES
-*>           "1" DELIMITED BY SIZE
-*>      INTO ABinaryString
-*>    END-STRING
-
-*>>>>>>>>>>>>>>>>>>>> create and write the output file
-*>    OPEN OUTPUT OutputFile
-*>    MOVE "1111101011100001" TO HackCode
-*>    WRITE HackCode
-*>    MOVE "0000101101011010" TO HackCode
-*>    WRITE HackCode
-*>    CLOSE OutputFile
-*>>>>>>>>>>>>>>>>>>>> Traverse and read the output file
-*>    OPEN INPUT OutputFile
-*>    READ OutputFile
-*>       AT END MOVE HIGH-VALUES TO HackCode
-*>    END-READ
-*>    PERFORM UNTIL HackCode = HIGH-VALUES
-*>       DISPLAY HackCode
-*>       READ OutputFile
-*>          AT END MOVE HIGH-VALUES TO HackCode
-*>       END-READ
-*>    END-PERFORM
-*>    DISPLAY LF
-*>    CLOSE OutputFile
-*>>>>>>>>>>>>>>>>>>>>> Look up stuff in a hash table
-*>            MOVE ZEROES to PreDefCapture
-*>            PERFORM VARYING PreDefCounter FROM 1 BY 1
-*>                    UNTIL PreDefCounter = 23 OR PreDefCapture <> 0
-*>              IF AddressString = PreDefAssembly(PreDefCounter)
-*>                DISPLAY "- Pre-defined Symbol or Label " WITH NO ADVANCING
-*>                MOVE PreDefCounter to PreDefCapture
-*>              END-IF *>Pre-defined table possibility
-*>            END-PERFORM *>PreDefTable
-*>            IF PreDefCapture <> 0
-*>              DISPLAY PreDefAssembly(PreDefCapture)
-*>              MOVE PreDefBinary(PreDefCapture) TO HackLine
-*>              DISPLAY "------------------------------Hack = " HackLine
-*>            END-IF
-    STOP RUN.
+CLOSE OutputFile
+DISPLAY "Completed."
+STOP RUN.

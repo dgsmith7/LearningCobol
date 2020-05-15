@@ -11,7 +11,7 @@ D;JEQ     //  once counter is zero we are done
 @R1      // set d = to contents of r1 which is
 D=M      //  the other multiplier
 @R2      // add d (r1 value) to r2 (again)
-M=M+D
+M=D+M
 @R0       // subtract 1 from r0
 M=M-1
 @R0       // set d = new counter value
