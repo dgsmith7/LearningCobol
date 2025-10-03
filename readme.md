@@ -7,10 +7,15 @@ This project is being completed on a MacBook Pro with OS X Catalina using GnuCOB
 Future projects include ASCII Art in COBOL
 
 Resources:
-The book:  Beginning COBOL for Programmers by Michael Coughlan
-http://1.droppdf.com/files/LTFDy/apress-beginning-cobol-for-programmers-2014.pdf
+The book: Beginning COBOL for Programmers by Michael Coughlan
+
+The book: Elements of Computing Systems by Noam Nisan and Shimon Schokon
+
 GnuCOBOL Guide
 https://open-cobol.sourceforge.io
+
+Nand2Tetris course
+https://www.nand2tetris.org
 
 To-do:
 Second-pass C-Commands
