@@ -4,7 +4,7 @@ I am using the "Assembler" project from the Nand2Tetris course (Chapter 6) as th
 
 This project is being completed on a MacBook Pro with OS X Catalina using GnuCOBOL
 
-Future projects include ASCII Art in COBOL. (PS - someday, but for now the 'COBOL PTSD' is still too fresh).
+Future projects include ASCII Art in COBOL.
 
 Resources:
 The book: Beginning COBOL for Programmers by Michael Coughlan
